@@ -10,8 +10,8 @@ apt-get update
 apt-get install -y r-base
 
 apt-get install -y gdebi-core
-wget http://download2.rstudio.org/rstudio-server-0.99.451-amd64.deb
-gdebi -n rstudio-server-0.99.451-amd64.deb
+wget https://download2.rstudio.org/rstudio-server-1.0.136-amd64.deb
+gdebi -n rstudio-server-1.0.136-amd64.deb
 
 useradd -m -s /bin/false -p $(openssl passwd -1 rstudio) rstudio
 
