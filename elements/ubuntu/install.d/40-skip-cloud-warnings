@@ -1,4 +1,0 @@
-#!/bin/bash
-touch /home/ubuntu/.cloud-warnings.skip
-touch /var/lib/cloud/instance/warnings/.skip
-
