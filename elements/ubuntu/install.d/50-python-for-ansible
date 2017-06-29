@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# required to support Ansible
+apt-get -y install python-simplejson
