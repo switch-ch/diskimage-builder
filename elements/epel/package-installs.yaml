@@ -1,2 +1,0 @@
-wget:
-  phase: pre-install.d

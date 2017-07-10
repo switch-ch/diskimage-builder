@@ -1,0 +1,5 @@
+adduser:
+ca-certificates:
+locales:
+lsb-release:
+  phase: pre-install.d

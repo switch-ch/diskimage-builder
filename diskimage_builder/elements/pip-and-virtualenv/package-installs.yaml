@@ -1,0 +1,23 @@
+# This package is only valid for SUSE and we need to pull it in
+# early enough because pip depends on it.
+python-xml:
+  phase: pre-install.d
+  dib_python_version: 2
+python-pip:
+  installtype: package
+  dib_python_version: 2
+python3-pip:
+  installtype: package
+  dib_python_version: 3
+python-virtualenv:
+  installtype: package
+  dib_python_version: 2
+python3-virtualenv:
+  installtype: package
+  dib_python_version: 3
+python-dev:
+  installtype: source
+  dib_python_version: 2
+python3-dev:
+  installtype: source
+  dib_python_version: 3

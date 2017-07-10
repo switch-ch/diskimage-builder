@@ -1,0 +1,20 @@
+{
+  "family": {
+    "redhat": {
+      "dhcp-client": "dhclient"
+    },
+    "gentoo": {
+      "dhcp-client": "net-misc/dhcpcd"
+    },
+    "suse": {
+      "dhcp-client": "dhcp-client"
+    },
+    "debian": {
+      "ifupdown": "ifupdown"
+    }
+  },
+  "default": {
+    "dhcp-client": "isc-dhcp-client",
+    "ifupdown": ""
+  }
+}

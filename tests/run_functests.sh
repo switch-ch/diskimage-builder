@@ -4,8 +4,20 @@ set -eu
 set -o pipefail
 
 BASE_DIR=$(cd $(dirname "$0")/.. && pwd)
-export DIB_ELEMENTS=$BASE_DIR/elements
-export DIB_CMD=$BASE_DIR/bin/disk-image-create
+
+# then execute tests for elements
+export DIB_CMD=disk-image-create
+export DIB_ELEMENTS=$(python -c '
+import diskimage_builder.paths
+diskimage_builder.paths.show_path("elements")')
+
+# XXX: This will move into the gate scripts, and happen before
+# we run this script ... just here for initial bringup
+./openstack/diskimage-builder/contrib/setup-gate-mirrors.sh
+
+# Setup sane locale defaults, because this information is leaked into DIB.
+export LANG=en_US.utf8
+export LC_ALL=
 
 #
 # Default skip tests
@@ -16,14 +28,29 @@ export DIB_CMD=$BASE_DIR/bin/disk-image-create
 DEFAULT_SKIP_TESTS=(
     # we run version pinned test in gate (this just runs latest)
     fedora/build-succeeds
+    # These require "zypper" on the host which is not available on
+    # all platforms
+    opensuse-minimal/build-succeeds
+    opensuse-minimal/opensuse423-build-succeeds
     # in non-voting
     gentoo/build-succeeds
+    opensuse/build-succeeds
+    opensuse/opensuse423-build-succeeds
     # good to have the test case around - but because of changes
     # in testing does not work always.
     debian-minimal/testing-build-succeeds
-    # Currently failing due to bug in locale generation
-    centos-minimal/build-succeeds
+    # No longer reasonable to test upstream (lacks a mirror in infra)
+    # note this is centos6
+    centos/build-succeeds
+    # Needs infra mirroring to be stable
+    debian-minimal/stable-build-succeeds
+    debian-minimal/stable-vm
+    debian/build-succeeds
 )
+
+# The default output formats (specified to disk-image-create's "-t"
+# command.  Elements can override with a test-output-formats file
+DEFAULT_OUTPUT_FORMATS="tar"
 
 function log_with_prefix {
     local pr=$1
@@ -72,17 +99,21 @@ function wait_minus_n {
     fi
 }
 
-# run_disk_element_test <test_element> <element>
-#  Run a disk-image-build .tar build of ELEMENT including any elements
-#  specified by TEST_ELEMENT
+# run_disk_element_test <test_element> <element> <use_tmp> <output_formats>
+#  Run a disk-image-build build of ELEMENT including any elements
+#  specified by TEST_ELEMENT.  Pass OUTPUT_FORMAT to "-t"
 function run_disk_element_test() {
     local test_element=$1
     local element=$2
     local dont_use_tmp=$3
+    local output_format="$4"
+
     local use_tmp_flag=""
     local dest_dir=$(mktemp -d)
 
-    trap "rm -rf $dest_dir" EXIT
+    if [[ ${KEEP_OUTPUT} -ne 1 ]]; then
+        trap "rm -rf $dest_dir" EXIT
+    fi
 
     if [ "${dont_use_tmp}" = "yes" ]; then
         use_tmp_flag="--no-tmpfs"
@@ -91,13 +122,18 @@ function run_disk_element_test() {
     if break="after-error" break_outside_target=1 \
         break_cmd="cp -v \$TMP_MOUNT_PATH/tmp/dib-test-should-fail ${dest_dir} || true" \
         DIB_SHOW_IMAGE_USAGE=1 \
-        ELEMENTS_PATH=$DIB_ELEMENTS:$DIB_ELEMENTS/$element/test-elements \
-        $DIB_CMD -x -t tar,qcow2 ${use_tmp_flag} -o $dest_dir/image -n $element $test_element 2>&1 \
+        ELEMENTS_PATH=$DIB_ELEMENTS/$element/test-elements \
+        $DIB_CMD -x -t ${output_format} \
+                       ${use_tmp_flag} \
+                       -o $dest_dir/image -n $element $test_element 2>&1 \
            | log_with_prefix "${element}/${test_element}"; then
 
-        if ! [ -f "$dest_dir/image.qcow2" ]; then
-            echo "Error: qcow2 build failed for element: $element, test-element: $test_element."
-            echo "No image $dest_dir/image.qcow2 found!"
+        if [[ "qcow2" =~ "$output_format" ]]; then
+            if ! [ -f "$dest_dir/image.qcow2" ]; then
+                echo "Error: qcow2 build failed for element: $element, test-element: $test_element."
+                echo "No image $dest_dir/image.qcow2 found!"
+                exit 1
+            fi
         fi
 
         # check inside the tar for sentinel files
@@ -122,8 +158,13 @@ function run_disk_element_test() {
         fi
     fi
 
-    trap EXIT
-    rm -rf $dest_dir /tmp/dib-test-should-fail
+    rm -f /tmp/dib-test-should-fail
+
+    if [[ ${KEEP_OUTPUT} -ne 1 ]]; then
+        # reset trap and cleanup
+        trap EXIT
+        rm -rf $dest_dir
+    fi
 }
 
 # run_ramdisk_element_test <test_element> <element>
@@ -171,6 +212,7 @@ done
 #
 JOB_MAX_CNT=1
 LOG_DATESTAMP=0
+KEEP_OUTPUT=0
 
 #
 # Parse args
@@ -183,6 +225,7 @@ while getopts ":hlj:t" opt; do
             echo "  -l : list available tests"
             echo "  -j : parallel job count (default to 1)"
             echo "  -t : prefix log messages with timestamp"
+            echo "  -k : keep output directories"
             echo "  <test> : functional test to run"
             echo "           Special test 'all' will run all tests"
             exit 0
@@ -191,7 +234,12 @@ while getopts ":hlj:t" opt; do
             echo "The available functional tests are:"
             echo
             for t in ${TESTS[@]}; do
-                echo "  $t"
+                echo -n "  $t"
+                if [[ " ${DEFAULT_SKIP_TESTS[@]} " =~ " ${t} " ]]; then
+                    echo " [skip]"
+                else
+                    echo " [run]"
+                fi
             done
             echo
             exit 0
@@ -202,6 +250,9 @@ while getopts ":hlj:t" opt; do
             ;;
         t)
             LOG_DATESTAMP=1
+            ;;
+        k)
+            KEEP_OUTPUT=1
             ;;
         \?)
             echo "Invalid option: -$OPTARG"
@@ -290,16 +341,25 @@ for test in "${TESTS_TO_RUN[@]}"; do
     element=${test%/*}
     test_element=${test#*/}
 
+    element_dir=$DIB_ELEMENTS/${element}/test-elements/${test_element}/
+
     # tests default to disk-based, but "element-type" can optionally
     # override that
     element_type=disk
-    element_type_override=$DIB_ELEMENTS/${element}/test-elements/${test_element}/element-type
+    element_type_override=${element_dir}/element-type
     if [ -f ${element_type_override} ]; then
         element_type=$(cat ${element_type_override})
     fi
 
+    # override the output format if specified
+    element_output=${DEFAULT_OUTPUT_FORMATS}
+    element_output_override=${element_dir}/test-output-formats
+    if [ -f $element_output_override ]; then
+        element_output=$(cat ${element_output_override})
+    fi
+
     echo "Running $test ($element_type)"
-    run_${element_type}_element_test $test_element $element ${DONT_USE_TMP} &
+    run_${element_type}_element_test $test_element $element ${DONT_USE_TMP} "${element_output}" &
 done
 
 # Wait for the rest of the jobs

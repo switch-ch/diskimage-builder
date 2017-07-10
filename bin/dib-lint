@@ -21,6 +21,9 @@
 set -eu
 set -o pipefail
 
+ELEMENTS_DIR=${ELEMENTS_DIR:-diskimage_builder/elements}
+LIB_DIR=${LIB_DIR:-diskimage_builder/lib}
+
 parse_exclusions() {
     # Per-file exclusions
     # Example: # dib-lint: disable=sete setpipefail
@@ -34,11 +37,15 @@ parse_exclusions() {
     #   ignore = sete setu
     section="dib-lint"
     option="ignore"
-    global_exclusions=$(python -c \
-        "import ConfigParser; \
-        conf=ConfigParser.ConfigParser(); \
-        conf.read('tox.ini'); \
-        print conf.get('$section', '$option') if conf.has_option('$section', '$option') else ''"
+    global_exclusions=$(python - <<EOF
+try:
+  import configparser
+except ImportError:
+  import ConfigParser as configparser
+conf=configparser.ConfigParser()
+conf.read('tox.ini')
+print(conf.get('$section', '$option')) if conf.has_option('$section', '$option') else ''
+EOF
     )
     echo $exclusions $global_exclusions
 }
@@ -63,13 +70,15 @@ echo "Running dib-lint in $(pwd)"
 rc=0
 TMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
 trap "rm -rf $TMPDIR" EXIT
-for i in $(find elements -type f   \
-                -not -name \*~     \
-                -not -name \#\*\#  \
-                -not -name \*.orig \
-                -not -name \*.rst  \
-                -not -name \*.yaml \
-                -not -name \*.py   \
+
+# note .py files are run through flake8 directly in tox.ini
+for i in $(find $ELEMENTS_DIR -type f \
+                -not -name \*~        \
+                -not -name \#\*\#     \
+                -not -name \*.orig    \
+                -not -name \*.rst     \
+                -not -name \*.yaml    \
+                -not -name \*.py      \
                 -not -name \*.pyc); do
 
     echo "Checking $i"
@@ -83,10 +92,10 @@ for i in $(find elements -type f   \
             error "$i is not executable"
         fi
 
-        # run flake8 over python files.  note our "dib-python"
-        # interpreter can confuse the magic matching being done in
-        # "file" and make it think the file is not python;
-        # special-case it.
+        # run flake8 over python files that don't have .py.  Note our
+        # "dib-python" interpreter can confuse the magic matching
+        # being done in "file" and make it think the file is not
+        # python; special-case it.
         if [[ "$(file -b -k --mime-type $i)" =~ "text/x-python" ]] || \
                [[ $firstline =~ "dib-python" ]]; then
             flake8 $i || error "$i failed flake8"
@@ -156,11 +165,24 @@ for i in $(find elements -type f   \
         fi
     fi
 
-    # check that environment files don't "set -x"
+    # check that environment files don't "set -x" and they have no executable
+    # bits set
     if [[ "$i" =~ (environment.d) ]]; then
         if grep -q "set -x" $i; then
             error "Environment file $i should not set tracing"
         fi
+        if [[ -x $i ]]; then
+            error "Environment file $i should not be marked as executable"
+        fi
+    fi
+
+    # check for
+    #  export FOO=$(bar)
+    # calls.  These are dangerous, because the export hides the return
+    # code of the $(bar) call.  Split this into 2 lines and -e will
+    # fail on the assignment
+    if grep -q 'export .*\$(' $i; then
+        error "Split export and assignments in $i"
     fi
 
     # check that sudo calls in phases run outside the chroot look
@@ -187,11 +209,29 @@ for i in $(find elements -type f   \
         fi
     fi
 
+    # check that which calls are not used. It is not built in and is missing
+    # from some constrained environments
+    if ! excluded which; then
+        while read LINE
+        do
+            if [[ $LINE =~ "which " ]]; then
+                #  Don't match:
+                #  - explicitly ignored
+                #  - commented
+                if [[ $LINE =~ (dib-lint: which|^#) ]]; then
+                    continue
+                fi
+                error "$i : potential use of which\n -- $LINE"
+            fi
+        done < $i
+    fi
+
 done
 
 echo "Checking indents..."
 
-for i in $(find elements -type f -and -name '*.rst' -or -type f -executable); do
+for i in $(find $ELEMENTS_DIR -type f -and -name '*.rst' -or -type f -executable) \
+             $(find $LIB_DIR -type f); do
     # Check for tab indentation
     if ! excluded tabindent; then
         if grep -q $'^ *\t' ${i}; then
@@ -207,20 +247,20 @@ for i in $(find elements -type f -and -name '*.rst' -or -type f -executable); do
 done
 
 if ! excluded mddocs; then
-    md_docs=$(find elements -name '*.md')
+    md_docs=$(find $ELEMENTS_DIR -name '*.md')
     if [ -n "$md_docs" ]; then
         error ".md docs found: $md_docs"
     fi
 fi
 
 echo "Checking YAML parsing..."
-for i in $(find elements -type f -name '*.yaml'); do
+for i in $(find $ELEMENTS_DIR -type f -name '*.yaml'); do
     echo "Parsing  $i"
     py_check="
 import yaml
 import sys
 try:
-    objs = yaml.load(open('$i'))
+    objs = yaml.safe_load(open('$i'))
 except yaml.parser.ParserError:
     sys.exit(1)
 "
@@ -229,7 +269,7 @@ except yaml.parser.ParserError:
     fi
 done
 echo "Checking pkg-map files..."
-for i in $(find elements -type f \
+for i in $(find $ELEMENTS_DIR -type f \
                 -name 'pkg-map' -a \! -executable); do
     echo "Parsing  $i"
     py_check="

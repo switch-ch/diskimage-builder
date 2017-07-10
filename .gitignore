@@ -1,3 +1,6 @@
+.coverage
+coverage.xml
+cover/*
 *~
 .testrepository
 *.sw?
@@ -16,3 +19,5 @@ build
 AUTHORS
 ChangeLog
 bin/diskimage_builder
+*.bak
+*.orig
