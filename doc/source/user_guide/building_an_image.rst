@@ -176,9 +176,6 @@ Tree and digraph notations can be mixed as needed in a configuration.
 Limitations
 +++++++++++
 
-There are a couple of new modules planned, but not yet implemented,
-like LVM, MD, encryption, ...
-
 To provide an interface towards the existing elements, there are
 currently three fixed keys used - which are not configurable:
 
@@ -323,6 +320,11 @@ size
    (percentage) numbers: in the later case the size is calculated
    based on the remaining free space.
 
+type (optional)
+   The partition type stored in the MBR partition table entry. The
+   default value is '0x83' (Linux Default partition). Any valid one
+   byte hexadecimal value may be specified here.
+
 Example:
 
 .. code-block:: yaml
@@ -351,6 +353,134 @@ Example:
 On the `image0` two partitions are created.  The size of the first is
 1GiB, the second uses the remaining free space.  On the `data_image`
 three partitions are created: all are about 1/3 of the disk size.
+
+Module: Lvm
+···········
+
+This module generates volumes on existing block devices. This means that it is
+possible to take any previous created partition, and create volumes information
+in it.
+
+The symbolic name for this module is `lvm`.
+
+There are the following key / value pairs to define one set of volumes:
+
+pvs
+    (mandatory) A list of dictionaries. Each dictionary describes one
+    physical volume.
+
+vgs
+    (mandatory) A list of dictionaries. Each dictionary describes one volume
+    group.
+
+lvs
+    (mandatory) A list of dictionaries. Each dictionary describes one logical
+    volume.
+
+The following key / value pairs can be given for each `pvs`:
+
+name
+    (mandatory) The name of the physical volume. With the help of this
+    name, the physical volume can later be referenced, e.g. when creating
+    a volume group.
+
+base
+    (mandatory) The name of the partition where the physical volume
+    needs to be created.
+
+options
+    (optional) List of options for the physical volume. It can contain
+    any option supported by the `pvcreate` command.
+
+The following key / value pairs can be given for each `vgs`:
+
+name
+    (mandatory) The name of the volume group. With the help of this name,
+    the volume group can later be referenced, e.g. when creating a logical
+    volume.
+
+base
+    (mandatory) The name(s) of the physical volumes where the volume groups
+    needs to be created. As a volume group can be created on one or more
+    physical volumes, this needs to be a list.
+
+options
+    (optional) List of options for the volume group. It can contain any
+    option supported by the `vgcreate` command.
+
+The following key / value pairs can be given for each `lvs`:
+
+name
+    (mandatory) The name of the logical volume. With the help of this name,
+    the logical volume can later be referenced, e.g. when creating a
+    filesystem.
+
+base
+    (mandatory) The name of the volume group where the logical volume
+    needs to be created.
+
+size
+    (optional) The exact size of the volume to be created. It accepts the same
+    syntax as the -L flag of the `lvcreate` command.
+
+extents
+    (optional) The relative size in extents of the volume to be created. It
+    accepts the same syntax as the -l flag of the `lvcreate` command.
+    Either size or extents need to be passed on the volume creation.
+
+options
+    (optional) List of options for the logical volume. It can contain any
+    option supported by the `lvcreate` command.
+
+Example:
+
+.. code-block: yaml
+
+    - lvm:
+        name: lvm
+        pvs:
+          - name: pv
+            options: ["--force"]
+            device: root
+
+        vgs:
+          - name: vg
+            base: ["pv"]
+            options: ["--force"]
+
+        lvs:
+          - name: lv_root
+            base: vg
+            size: 1800M
+
+          - name: lv_tmp
+            base: vg
+            size: 100M
+
+          - name: lv_var
+            base: vg
+            size: 500M
+
+          - name: lv_log
+            base: vg
+            size: 100M
+
+          - name: lv_audit
+            base: vg
+            size: 100M
+
+          - name: lv_home
+            base: vg
+            size: 200M
+
+On the `root` partition a physical volume is created. On that physical
+volume, a volume group is created. On top of this volume group, six logical
+volumes are created.
+
+Please note that in order to build images that are bootable using volumes,
+your ramdisk image will need to have that support. If the image you are using
+does not have it, you can add the needed modules and regenerate it, by
+including the `dracut-regenerate` element when building it.
 
 
 Level 2
@@ -506,11 +636,35 @@ image in. This will improve image build time by building it in RAM.
 By default, the tmpfs file system uses 50% of the available RAM.
 Therefore, the RAM should be at least the double of the minimum tmpfs
 size required.
+
 For larger images, when no sufficient amount of RAM is available, tmpfs
 can be disabled completely by passing --no-tmpfs to disk-image-create.
 ramdisk-image-create builds a regular image and then within that image
 creates ramdisk.
+
 If tmpfs is not used, you will need enough room in /tmp to store two
 uncompressed cloud images. If tmpfs is used, you would still need /tmp space
 for one uncompressed cloud image and about 20% of that image for working files.
 
+
+Chosing an Architecture
+-----------------------
+
+If needed you can specify an override the architecture selection by passing a
+``-a`` argument like:
+
+::
+
+    disk-image-create -a <arch> ...
+
+Notes about PowerPC Architectures
++++++++++++++++++++++++++++++++++
+
+PowerPC can operate in either Big or Little Endian mode.  ``ppc64``
+always refers to Big Endian operation.  When running in little endian
+mode it can be referred to as ``ppc64le`` or ``ppc64el``.
+
+Typically ``ppc64el`` refers to a ``.deb`` based distribution
+architecture, and ``ppc64le`` refers to a ``.rpm`` based distribution.
+Regardless of the distribution the kernel architecture is always
+``ppc64le``.

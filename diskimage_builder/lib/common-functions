@@ -154,7 +154,7 @@ function _get_chroot_processes () {
     # Deselect kernel threads, and use a python script to avoid
     # forking lots and lots of readlink / grep processes on a busy
     # system.
-    ps --ppid 2 -p 2 --deselect -o pid= | xargs python -c '
+    ps --ppid 2 -p 2 --deselect -o pid= | xargs ${DIB_PYTHON_EXEC:-python} -c '
 import os
 import sys
 
@@ -193,7 +193,7 @@ function kill_chroot_processes () {
 }
 
 function cleanup_build_dir () {
-    if ! timeout 5  sh -c " while ! sudo rm -rf $TMP_BUILD_DIR/built; do sleep 1; done"; then
+    if ! timeout 10  sh -c " while ! sudo rm -rf $TMP_BUILD_DIR/built; do sleep 1; done"; then
         echo "ERROR: unable to cleanly remove $TMP_BUILD_DIR/built"
         exit 1
     fi
@@ -398,7 +398,14 @@ function block_device_create_config_file {
     for i in ${!image_elements[@]}; do
         local cfg
         # look for arch specific version first, then default
-        cfg=${image_elements[$i]}/block-device-${ARCH}.yaml
+        if [[ "ppc64le ppc64el" =~ $ARCH ]] ; then
+            # NOTE(tonyb): ppc64el and ppc64le are the same archttechture, it's
+            # just different distro's have different names.  So if we're either
+            # of them pick the block-device-ppc64el.yaml file
+            cfg=${image_elements[$i]}/block-device-ppc64el.yaml
+        else
+            cfg=${image_elements[$i]}/block-device-${ARCH}.yaml
+        fi
         if [ -e ${cfg} ]; then
             cp ${cfg} ${config_yaml}
             echo "Using block-device config: ${cfg}"

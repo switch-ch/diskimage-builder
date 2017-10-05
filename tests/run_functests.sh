@@ -11,10 +11,6 @@ export DIB_ELEMENTS=$(python -c '
 import diskimage_builder.paths
 diskimage_builder.paths.show_path("elements")')
 
-# XXX: This will move into the gate scripts, and happen before
-# we run this script ... just here for initial bringup
-./openstack/diskimage-builder/contrib/setup-gate-mirrors.sh
-
 # Setup sane locale defaults, because this information is leaked into DIB.
 export LANG=en_US.utf8
 export LC_ALL=
@@ -26,26 +22,35 @@ export LC_ALL=
 #  tests are not run by "tox -e func" in the gate.
 #
 DEFAULT_SKIP_TESTS=(
-    # we run version pinned test in gate (this just runs latest)
-    fedora/build-succeeds
+    ##  These are part of the "extras-nv" job
     # These require "zypper" on the host which is not available on
     # all platforms
     opensuse-minimal/build-succeeds
     opensuse-minimal/opensuse423-build-succeeds
-    # in non-voting
+    # non-voting; not used by infra currently
     gentoo/build-succeeds
-    opensuse/build-succeeds
-    opensuse/opensuse423-build-succeeds
-    # good to have the test case around - but because of changes
-    # in testing does not work always.
-    debian-minimal/testing-build-succeeds
-    # No longer reasonable to test upstream (lacks a mirror in infra)
-    # note this is centos6
-    centos/build-succeeds
-    # Needs infra mirroring to be stable
+    # Needs infra mirroring to move to voting job
     debian-minimal/stable-build-succeeds
     debian-minimal/stable-vm
+    ##
+
+    # These download base images which has shown to be very unreliable
+    # in the gate.  Keep them in a -nv job until we can figure out
+    # better caching for the images
+    opensuse/build-succeeds
+    opensuse/opensuse423-build-succeeds
+    centos7/build-succeeds
     debian/build-succeeds
+    fedora/build-succeeds
+    ubuntu/trusty-build-succeeds
+    ubuntu/xenial-build-succeeds
+
+    # No longer reasonable to test upstream (lacks a mirror in infra)
+    # Note this is centos6 and should probably be removed
+    centos/build-succeeds
+
+    # This job is a bit unreliable, even if we get mirroring
+    debian-minimal/testing-build-succeeds
 )
 
 # The default output formats (specified to disk-image-create's "-t"

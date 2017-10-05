@@ -55,8 +55,11 @@ function install_grub2 {
     # Check for offline installation of grub
     if [ -f "/tmp/grub/install" ] ; then
         source /tmp/grub/install
+    # Right now we can't use pkg-map to branch by arch, so tag an architecture
+    # specific virtual package so we can install the rigth thing based on
+    # distribution.
     elif [[ "$ARCH" =~ "ppc" ]]; then
-        install-packages grub-ieee1275
+        install-packages -m bootloader grub-ppc64
     else
         install-packages -m bootloader grub-pc
     fi
@@ -117,12 +120,11 @@ function install_grub2 {
     fi
 
     if [[ "$ARCH" =~ "ppc" ]] ; then
-        # For PPC, we use the "boot" partition as the one to point
-        # grub-install to, not the loopback device.  ppc has a
-        # dedicated PReP boot partition.  This seems to only work on
-        # /dev/mapper/... nodes due to matching rules in grub
-        # XXX : this may not be true.  It seems to work,
-        # but requires some more investigation.
+        # For PPC (64-Bit regardless of Endian-ness), we use the "boot"
+        # partition as the one to point grub-install to, not the loopback
+        # device.  ppc has a dedicated PReP boot partition.
+        # For grub2 < 2.02~beta3 this needs to be a /dev/mapper/... node after
+        # that a dev/loopXpN node will work fine.
         $GRUBNAME --modules="part_msdos" $GRUB_OPTS ${DEVICES[boot]} --no-nvram
     else
         $GRUBNAME --modules="biosdisk part_msdos" $GRUB_OPTS $BOOT_DEV
@@ -143,7 +145,17 @@ function install_grub2 {
     echo "GRUB_TIMEOUT=${DIB_GRUB_TIMEOUT:-5}" >>/etc/default/grub
     echo 'GRUB_TERMINAL="serial console"' >>/etc/default/grub
     echo 'GRUB_GFXPAYLOAD_LINUX=text' >>/etc/default/grub
-    echo 'GRUB_CMDLINE_LINUX_DEFAULT="console=tty0 console=ttyS0,115200 no_timer_check"' >>/etc/default/grub
+
+    # Serial console on Power is hvc0
+    if [[ "powerpc ppc64 ppc64le" =~ "$ARCH" ]]; then
+        SERIAL_CONSOLE="hvc0"
+    else
+        SERIAL_CONSOLE="ttyS0,115200"
+    fi
+
+    GRUB_CMDLINE_LINUX_DEFAULT="console=tty0 console=${SERIAL_CONSOLE} no_timer_check"
+
+    echo "GRUB_CMDLINE_LINUX_DEFAULT=\"${GRUB_CMDLINE_LINUX_DEFAULT}\"" >>/etc/default/grub
     echo 'GRUB_SERIAL_COMMAND="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1"' >>/etc/default/grub
     if type grub2-mkconfig >/dev/null; then
         GRUB_MKCONFIG="grub2-mkconfig -o $GRUB_CFG"
