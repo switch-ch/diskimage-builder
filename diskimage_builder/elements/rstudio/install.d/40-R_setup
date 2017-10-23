@@ -11,7 +11,13 @@ apt-get install -y build-essential
 apt-get install -y libssl-dev
 apt-get install -y libcurl4-openssl-dev
 apt-get install -y libxml2-dev
+apt-get install -y libgfortran-4.8-dev
+apt-get install -y libblas-dev
+apt-get install -y liblapack-dev
+apt-get install -y gfortran
 apt-get install -y r-base
+apt-get install -y libpng12-dev
+apt-get install -y libjpeg-dev
 
 apt-get install -y gdebi-core
 wget https://download2.rstudio.org/rstudio-server-1.0.153-amd64.deb
