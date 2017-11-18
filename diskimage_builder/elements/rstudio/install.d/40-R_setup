@@ -2,7 +2,7 @@
 apt-get install -y language-pack-de figlet pwgen
 
 cat <<- "EOF1" > /etc/apt/sources.list.d/r-cran.list
-deb http://stat.ethz.ch/CRAN/bin/linux/ubuntu trusty/
+deb http://stat.ethz.ch/CRAN/bin/linux/ubuntu xenial/
 EOF1
 
 apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
@@ -38,11 +38,31 @@ server {
   }
 EOF1
 
-cat <<- "EOF1" > /etc/init/rstudio-password.conf
+case "$DIB_INIT_SYSTEM" in
+    systemd)
+
+        cat <<- "EOF" > /etc/systemd/system/rstudio-password.service
+[Unit]
+Description=RStudio Password
+
+[Service]
+Type=oneshot
+ExecStart=/etc/init.d/rstudio-password
+
+[Install]
+WantedBy=rstudio-server.service
+EOF
+        systemctl enable rstudio-password
+        ;;
+
+    upstart)
+        cat <<- "EOF1" > /etc/init/rstudio-password.conf
 start on filesystem
 task
 exec /etc/init.d/rstudio-password
 EOF1
+    ;;
+esac
 
 cat <<- "EOF1" > /etc/init.d/rstudio-password
 #!/bin/bash
@@ -71,5 +91,3 @@ fi
 EOF1
 
 chmod +x /etc/init.d/rstudio-password
-
-
