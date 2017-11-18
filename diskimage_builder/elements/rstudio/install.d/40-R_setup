@@ -20,8 +20,8 @@ apt-get install -y libpng12-dev
 apt-get install -y libjpeg-dev
 
 apt-get install -y gdebi-core
-wget https://download2.rstudio.org/rstudio-server-1.0.153-amd64.deb
-gdebi -n rstudio-server-1.0.153-amd64.deb
+wget https://download2.rstudio.org/rstudio-server-1.1.383-amd64.deb
+gdebi -n rstudio-server-1.1.383-amd64.deb
 
 useradd -m -s /bin/false -p $(openssl passwd -1 rstudio) rstudio
 
