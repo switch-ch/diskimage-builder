@@ -29,7 +29,7 @@ apt-get install -y nginx
 
 cat <<- "EOF1" > /etc/nginx/sites-available/default
 server {
-    listen 80;
+    listen [::]:80 ipv6only=off;
 
     location / {
       proxy_pass http://localhost:8787;
