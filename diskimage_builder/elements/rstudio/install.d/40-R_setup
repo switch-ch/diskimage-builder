@@ -1,8 +1,8 @@
 #!/bin/bash
 apt-get install -y language-pack-de figlet pwgen
 
-cat <<- "EOF1" > /etc/apt/sources.list.d/r-cran.list
-deb http://stat.ethz.ch/CRAN/bin/linux/ubuntu xenial/
+cat <<- EOF1 > /etc/apt/sources.list.d/r-cran.list
+deb http://stat.ethz.ch/CRAN/bin/linux/ubuntu $DIB_RELEASE/
 EOF1
 
 apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
