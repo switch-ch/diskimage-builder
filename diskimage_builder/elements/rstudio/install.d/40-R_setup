@@ -66,7 +66,7 @@ esac
 
 cat <<- "EOF1" > /etc/init.d/rstudio-password
 #!/bin/bash
-echo "RSTudio Password starting"
+echo "RStudio Password starting"
 FLAG="/var/log/rstudio.log"
 
 if [ ! -f $FLAG ]; then
