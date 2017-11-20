@@ -1,8 +1,8 @@
 #!/bin/bash
 apt-get install -y language-pack-de figlet pwgen
 
-cat <<- "EOF1" > /etc/apt/sources.list.d/r-cran.list
-deb http://stat.ethz.ch/CRAN/bin/linux/ubuntu trusty/
+cat <<- EOF1 > /etc/apt/sources.list.d/r-cran.list
+deb http://stat.ethz.ch/CRAN/bin/linux/ubuntu $DIB_RELEASE/
 EOF1
 
 apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
@@ -20,8 +20,8 @@ apt-get install -y libpng12-dev
 apt-get install -y libjpeg-dev
 
 apt-get install -y gdebi-core
-wget https://download2.rstudio.org/rstudio-server-1.0.153-amd64.deb
-gdebi -n rstudio-server-1.0.153-amd64.deb
+wget https://download2.rstudio.org/rstudio-server-1.1.383-amd64.deb
+gdebi -n rstudio-server-1.1.383-amd64.deb
 
 useradd -m -s /bin/false -p $(openssl passwd -1 rstudio) rstudio
 
@@ -38,15 +38,35 @@ server {
   }
 EOF1
 
-cat <<- "EOF1" > /etc/init/rstudio-password.conf
+case "$DIB_INIT_SYSTEM" in
+    systemd)
+
+        cat <<- "EOF" > /etc/systemd/system/rstudio-password.service
+[Unit]
+Description=RStudio Password
+
+[Service]
+Type=oneshot
+ExecStart=/etc/init.d/rstudio-password
+
+[Install]
+WantedBy=rstudio-server.service
+EOF
+        systemctl enable rstudio-password
+        ;;
+
+    upstart)
+        cat <<- "EOF1" > /etc/init/rstudio-password.conf
 start on filesystem
 task
 exec /etc/init.d/rstudio-password
 EOF1
+    ;;
+esac
 
 cat <<- "EOF1" > /etc/init.d/rstudio-password
 #!/bin/bash
-echo "RSTudio Password starting"
+echo "RStudio Password starting"
 FLAG="/var/log/rstudio.log"
 
 if [ ! -f $FLAG ]; then
@@ -71,5 +91,3 @@ fi
 EOF1
 
 chmod +x /etc/init.d/rstudio-password
-
-
