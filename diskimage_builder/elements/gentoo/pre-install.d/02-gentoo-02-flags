@@ -1,0 +1,29 @@
+#!/bin/bash
+
+if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+# get the directories in order
+mkdir -p /etc/portage/profile
+mkdir -p /etc/portage/package.keywords
+mkdir -p /etc/portage/package.mask
+mkdir -p /etc/portage/package.unmask
+mkdir -p /etc/portage/package.use
+
+# needed in order to install pip packages as root
+echo 'dev-python/pip vanilla' >> /etc/portage/package.use/pip
+# needed to create disk images
+echo 'sys-fs/lvm2 -thin' >> /etc/portage/package.use/grub
+echo 'sys-boot/grub device-mapper' >> /etc/portage/package.use/grub
+
+# needed in order to install pip packages as root
+echo '=dev-python/pip-9.0.1-r2 ~amd64' >> /etc/portage/package.keywords/pip
+
+if [[ "${GENTOO_PROFILE}" == *"musl"* ]]; then
+    echo "dev-vcs/git -gpg" >> /etc/portage/package.use/musl  # gpg doesn't build on musl profiles
+    echo "=sys-block/open-iscsi-2.0.874-r1 ~amd64" >> /etc/portage/package.keywords/musl
+    echo "=sys-block/open-isns-0.97 ~amd64" >> /etc/portage/package.keywords/musl
+fi

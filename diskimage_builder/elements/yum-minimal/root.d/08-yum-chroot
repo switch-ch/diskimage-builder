@@ -23,6 +23,8 @@ fi
 set -eu
 set -o pipefail
 
+source $_LIB/common-functions
+
 if [ -f ${TARGET_ROOT}/.extra_settings ] ; then
     . ${TARGET_ROOT}/.extra_settings
 fi
@@ -72,10 +74,15 @@ function _install_repos {
     packages="basesystem filesystem setup "
 
     packages+="${DISTRO_NAME}-release "
-    # after fedora21, this is split into into a separate -repos
-    # package
-    if [ $DISTRO_NAME = fedora ]; then
-        packages+="${DISTRO_NAME}-repos "
+
+    # Starting in F21 this was split into a separate package
+    if [[ ${DISTRO_NAME} == 'fedora' ]]; then
+        packages+="fedora-repos "
+    fi
+
+    # F27 started putting gpg keys into this separate package
+    if [[ ${DISTRO_NAME} = fedora && ${DIB_RELEASE} -gt 26 ]]; then
+        packages+="fedora-gpg-keys "
     fi
 
     # By default, parent elements (fedora-minimal, centos-minimal)
@@ -201,14 +208,14 @@ function _install_pkg_manager {
             --installroot $TARGET_ROOT \
             install $@ ${_lang_pack} ${_extra_pkgs} && rc=$? || rc=$?
 
-        # We modified the base system - make sure we clean up always!
-        rm $HOME/.rpmmacros.dib.lock
+        # Note we've modified the base system's .rpmmacros.  Ensure we
+        # clean it up *always*
         # sed makes it easy to remove last line, but not last n lines...
         sed -i '$ d' $HOME/.rpmmacros; sed -i '$ d' $HOME/.rpmmacros;
         if [ $rc != 0 ]; then
             die "Initial yum install to chroot failed!  Can not continue."
         fi
-    ) 9>$HOME/.rpmmacros.dib.lock
+    ) 9>$DIB_LOCKFILES/.rpmmacros.dib.lock
 
     # Set gpg path back because subsequent actions will take place in
     # the chroot
@@ -223,7 +230,7 @@ function _install_pkg_manager {
 sudo mkdir -p $TARGET_ROOT/proc $TARGET_ROOT/dev $TARGET_ROOT/sys
 sudo mount -t proc none $TARGET_ROOT/proc
 sudo mount --bind /dev $TARGET_ROOT/dev
-sudo mount --bind /dev/pts $TARGET_ROOT/dev/pts
+sudo mount -t devpts $(mount_dev_pts_options) devpts $TARGET_ROOT/dev/pts
 sudo mount -t sysfs none $TARGET_ROOT/sys
 
 # initalize rpmdb
@@ -245,7 +252,10 @@ _install_repos
 
 # install dnf for >= f22
 if [ $DIB_RELEASE -ge 22 ]; then
-    _install_pkg_manager dnf dnf-plugins-core yum
+    # Fedora 27 has a "curl-minimal" package that will get pulled in as a
+    # rpm dependency.  This causes problems later if/when "curl" gets
+    # installed.  To avoid this, just install the full curl first up.
+    _install_pkg_manager dnf dnf-plugins-core yum curl
 else
     _install_pkg_manager yum
 fi
@@ -260,22 +270,20 @@ sudo -E chroot $TARGET_ROOT ${YUM} clean all
 echo "%_install_langs C:en_US:en_US.UTF-8" | \
     sudo tee -a $TARGET_ROOT/etc/rpm/macros.langs > /dev/null
 
-# bootstrap the environment within the chroot; bring in new
-# metadata with an update and install some base packages we need.
-sudo -E chroot $TARGET_ROOT ${YUM} -y update
-sudo -E chroot $TARGET_ROOT ${YUM} -y \
-    --setopt=cachedir=/tmp/yum/$ARCH/$DIB_RELEASE \
-    install systemd passwd findutils sudo util-linux-ng
+_base_packages="systemd passwd findutils sudo util-linux-ng "
 
 # This package is split out from systemd on >F24, dracut is
 # missing the dependency and will fail to make an initrd without
 # it; see
 #  https://bugzilla.redhat.com/show_bug.cgi?id=1398505
-if [ $DISTRO_NAME = "fedora" -a $DIB_RELEASE -ge 24 ]; then
-    sudo -E chroot $TARGET_ROOT ${YUM} -y \
-        --setopt=cachedir=/tmp/yum/$ARCH/$DIB_RELEASE \
-        install systemd-udev
-fi
+_base_packages+="systemd-udev "
+
+# bootstrap the environment within the chroot; bring in new
+# metadata with an update and install some base packages we need.
+sudo -E chroot $TARGET_ROOT ${YUM} -y update
+sudo -E chroot $TARGET_ROOT ${YUM} -y \
+    --setopt=cachedir=/tmp/yum/$ARCH/$DIB_RELEASE \
+    install ${_base_packages}
 
 # Put in a dummy /etc/resolv.conf over the temporary one we used
 # to bootstrap.  systemd has a bug/feature [1] that it will assume

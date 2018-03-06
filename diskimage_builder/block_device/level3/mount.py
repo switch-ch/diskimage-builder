@@ -95,6 +95,20 @@ class MountPointNode(NodeBase):
 
     def umount(self):
         logger.info("Called for [%s]", self.name)
+        # Before calling umount, call 'fstrim' on suitable mounted
+        # file systems.  This discards unused blocks from the mounted
+        # file system and therefore decreases the resulting image
+        # size.
+        #
+        # A race condition can occur when trying to fstrim immediately
+        # after deleting a file resulting in that free space not being
+        # reclaimed.  Calling sync before fstrim is a workaround for
+        # this behaviour.
+        # https://lists.gnu.org/archive/html/qemu-devel/2014-03/msg02978.html
+        exec_sudo(["sync"])
+        if self.state['filesys'][self.base]['fstype'] != 'vfat':
+            exec_sudo(["fstrim", "--verbose",
+                       self.state['mount'][self.mount_point]['path']])
         exec_sudo(["umount", self.state['mount'][self.mount_point]['path']])
 
     def delete(self):
@@ -149,8 +163,8 @@ class Mount(PluginBase):
                 "Mount point [%s] specified more than once"
                 % self.node.mount_point)
         sorted_mount_points.append((self.node.mount_point, self.node.name))
-        sorted(sorted_mount_points, key=functools.cmp_to_key(cmp_mount_order))
-        # reset the state key to the new list
+        sorted_mount_points.sort(key=functools.cmp_to_key(cmp_mount_order))
+        # Save the state if it's new (otherwise this is idempotent update)
         state['sorted_mount_points'] = sorted_mount_points
         logger.debug("Ordered mounts now: %s", sorted_mount_points)
 

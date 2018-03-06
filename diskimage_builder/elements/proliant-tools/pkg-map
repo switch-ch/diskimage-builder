@@ -5,11 +5,15 @@
         },
         "redhat": {
             "python-dev": "python2-devel"
+        },
+        "suse": {
+            "python-dev": "python-devel"
         }
     },
     "default": {
         "alien": "",
         "gcc": "gcc",
-        "python-dev": "python-dev"
+        "python-dev": "python-dev",
+        "unzip": "unzip"
     }
 }
