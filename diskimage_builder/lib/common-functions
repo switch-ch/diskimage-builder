@@ -239,8 +239,51 @@ function run_d() {
     check_break after-$1 bash
 }
 
+function _arg_defaults_hack() {
+    # The block-device configuration looks in all elements for a
+    # "block-device-default.yaml" file.  The "vm" element used to
+    # provide the default block-device, which was fine when there was
+    # only one option; but now we have mbr, gpt & efi versions.
+    #
+    # So now the vm element has a dependency on the block-device
+    # element, which several different elements can provide.  However,
+    # for backwards compatability we need to ensure you can still
+    # build without specifying it.  Thus if we see the vm element, but
+    # no block-device-* element, we will automatically add the old
+    # default MBR.
+    #
+    # Note that you can still override this by setting
+    # DIB_BLOCK_DEVICE_CONFIG; any value there will be taken over the
+    # element defaults.  In this case you'd have "block-device-mbr" as
+    # an element, but it wouldn't actually be used for configuration.
+    #
+    # XXX: if this is becoming a common problem, we could have some
+    # sort of "element-defaults" that maps a "element-deps" entry to a
+    # default.
+    local vm_seen
+    local blockdev_seen
+    local elements
+
+    for arg do
+        if [[ "$arg" =~ "vm" ]]; then
+            vm_seen=1
+        elif [[ "$arg" =~ "block-device-" ]]; then
+            blockdev_seen=1
+        fi
+        elements="$elements $arg"
+    done
+
+    if [[ -n "${vm_seen}" && -z "${blockdev_seen}" ]]; then
+        elements="$elements block-device-mbr"
+    fi
+
+    echo $elements
+}
+
 function arg_to_elements() {
   for arg do IMAGE_ELEMENT="$IMAGE_ELEMENT $arg" ; done
+
+  IMAGE_ELEMENT="$(_arg_defaults_hack $IMAGE_ELEMENT)"
 
   if [ "$SKIP_BASE" != "1" ]; then
     IMAGE_ELEMENT="base $IMAGE_ELEMENT"
@@ -295,7 +338,12 @@ function create_base () {
     fi
 
     # Configure Image
-    # Setup resolv.conf so we can chroot to install some packages
+
+    # Save resolv.conf as created by the initial install.  Note the
+    # .ORIG file is an exported interface -- it may be modified and we
+    # will copy it back in during finalisation of the image.
+    # Note that we use -L and -f to test here as test (and bash [[)
+    # return false with -e if the link target does not exist.
     if [ -L $TMP_MOUNT_PATH/etc/resolv.conf ] || [ -f $TMP_MOUNT_PATH/etc/resolv.conf ] ; then
         sudo mv $TMP_MOUNT_PATH/etc/resolv.conf $TMP_MOUNT_PATH/etc/resolv.conf.ORIG
     fi
@@ -394,11 +442,13 @@ function block_device_create_config_file {
     if [[ ${DIB_BLOCK_DEVICE_CONFIG:-} == file://* ]]; then
         cp $(echo ${DIB_BLOCK_DEVICE_CONFIG} | cut -c 8-) ${config_yaml}
         echo "Using file-based block-device config: ${DIB_BLOCK_DEVICE_CONFIG}"
+        $xtrace
         return
     fi
     if [ -n "${DIB_BLOCK_DEVICE_CONFIG:-}" ]; then
         printf "%s" "${DIB_BLOCK_DEVICE_CONFIG}" >${config_yaml}
         echo "User specified block-device config from DIB_BLOCK_DEVICE_CONFIG"
+        $xtrace
         return
     fi
 
@@ -420,12 +470,14 @@ function block_device_create_config_file {
         if [ -e ${cfg} ]; then
             cp ${cfg} ${config_yaml}
             echo "Using block-device config: ${cfg}"
+            $xtrace
             return
         else
             cfg=${image_elements[$i]}/block-device-default.yaml
             if [ -e ${cfg} ]; then
                 cp ${cfg} ${config_yaml}
                 echo "Using block-device config: ${cfg}"
+                $xtrace
                 return
             fi
         fi

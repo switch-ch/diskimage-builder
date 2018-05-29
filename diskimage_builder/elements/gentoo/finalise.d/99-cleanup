@@ -41,7 +41,7 @@ if [[ "${GENTOO_PORTAGE_CLEANUP}" != "False" ]]; then
         done
     fi
     # remove portage files
-    rm -Rf /usr/portage/* /var/cache/portage/distfiles
+    rm -Rf /usr/portage/* /usr/portage/.git /var/cache/portage/distfiles
 fi
 
 # shrink a bit
@@ -55,3 +55,8 @@ if [[ -a /usr/sbin/grub2-install ]]; then
 fi
 
 unfix_shm
+
+# systemd id
+if [[ "${GENTOO_PROFILE}" == *"systemd"* ]]; then
+    cp /dev/null /etc/machine-id
+fi

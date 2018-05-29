@@ -67,52 +67,23 @@ on.
 
 There are currently two defaults:
 
-* When using the `vm` element a MBR based partition layout is created
-  with exactly one partition that fills up the whole disk and used as
-  root device.
-* When not using the `vm` element a plain filesystem image, without
+* When using the ``vm`` element, an element that provides
+  ``block-device`` should be included.  Available ``block-device-*``
+  elements cover the common case of a single partition that fills up
+  the whole disk and used as root device.  Currently there are MBR,
+  GPT and EFI versions.  For example, to use a GPT disk you could
+  build with ::
+
+    disk-image-create -o output.qcow vm block-device-gpt ubuntu-minimal
+
+* When not using the ``vm`` element a plain filesystem image, without
   any partitioning, is created.
 
-The user can overwrite the default handling by setting the environment
+If you wish to customise the top-level ``block-device-default.yaml``
+file from one of the ``block-device-*`` elements, set the environment
 variable `DIB_BLOCK_DEVICE_CONFIG`.  This variable must hold YAML
-structured configuration data.
-
-The default when using the `vm` element is:
-
-.. code-block:: yaml
-
-    DIB_BLOCK_DEVICE_CONFIG='
-      - local_loop:
-          name: image0
-
-      - partitioning:
-          base: image0
-          label: mbr
-          partitions:
-            - name: root
-              flags: [ boot, primary ]
-              size: 100%
-              mkfs:
-                mount:
-                  mount_point: /
-                  fstab:
-                    options: "defaults"
-                    fsck-passno: 1'
-
-The default when not using the `vm` element is:
-
-.. code-block:: yaml
-
-    DIB_BLOCK_DEVICE_CONFIG='
-      - local_loop:
-          name: image0
-          mkfs:
-            name: mkfs_root
-            mount:
-              mount_point: /
-              fstab:
-                options: "defaults"
-                fsck-passno: 1'
+structured configuration data or be a ``file://`` URL reference to a
+on-disk configuration file.
 
 There are a lot of different options for the different levels.  The
 following sections describe each level in detail.
@@ -247,8 +218,8 @@ encrypted, ...) and create partition information in it.
 
 The symbolic name for this module is `partitioning`.
 
-Currently the only supported partitioning layout is Master Boot Record
-`MBR`.
+MBR
+***
 
 It is possible to create primary or logical partitions or a mix of
 them. The numbering of the primary partitions will start at 1,
@@ -267,19 +238,27 @@ partitions.
 Partitions are created in the order they are configured.  Primary
 partitions - if needed - must be first in the list.
 
+GPT
+***
+
+GPT partitioning requires the ``sgdisk`` tool to be available.
+
+Options
+*******
+
 There are the following key / value pairs to define one partition
 table:
 
 base
-   (mandatory) The base device where to create the partitions in.
+   (mandatory) The base device to create the partitions in.
 
 label
-   (mandatory) Possible values: 'mbr'
-   This uses the Master Boot Record (MBR) layout for the disk.
-   (There are currently plans to add GPT later on.)
+   (mandatory) Possible values: 'mbr', 'gpt'
+   Configure use of either the Master Boot Record (MBR) or GUID
+   Partition Table (GPT) formats
 
 align
-   (optional - default value '1MiB')
+   (optional - default value '1MiB'; MBR only)
    Set the alignment of the partition.  This must be a multiple of the
    block size (i.e. 512 bytes).  The default of 1MiB (~ 2048 * 512
    bytes blocks) is the default for modern systems and known to
@@ -308,9 +287,9 @@ flags
    (optional) List of flags for the partition. Default: empty.
    Possible values:
 
-   boot
+   boot (MBR only)
       Sets the boot flag for the partition
-   primary
+   primary (MBR only)
       Partition should be a primary partition. If not set a logical
       partition will be created.
 
@@ -321,9 +300,14 @@ size
    based on the remaining free space.
 
 type (optional)
-   The partition type stored in the MBR partition table entry. The
-   default value is '0x83' (Linux Default partition). Any valid one
+   The partition type stored in the MBR or GPT partition table entry.
+
+   For MBR the default value is '0x83' (Linux Default partition). Any valid one
    byte hexadecimal value may be specified here.
+
+   For GPT the default value is '8300' (Linux Default partition). Any valid two
+   byte hexadecimal value may be specified here. Due to ``sgdisk`` leading '0x'
+   should not be used.
 
 Example:
 
@@ -350,12 +334,28 @@ Example:
         - name: data2
           size: 100%
 
+  - partitioning:
+      base: gpt_image
+      label: gpt
+      partitions:
+        - name: ESP
+          type: EF00
+          size: 16MiB
+        - name: data1
+          size: 1GiB
+        - name: lvmdata
+          type: 8E00
+          size: 100%
+
 On the `image0` two partitions are created.  The size of the first is
 1GiB, the second uses the remaining free space.  On the `data_image`
-three partitions are created: all are about 1/3 of the disk size.
+three partitions are created: all are about 1/3 of the disk size. On
+the `gpt_image` three partitions are created: 16MiB one for EFI
+bootloader, 1GiB Linux filesystem one and rest of disk will be used
+for LVM partition.
 
-Module: Lvm
-···········
+Module: LVM
+...........
 
 This module generates volumes on existing block devices. This means that it is
 possible to take any previous created partition, and create volumes information
@@ -645,6 +645,29 @@ creates ramdisk.
 If tmpfs is not used, you will need enough room in /tmp to store two
 uncompressed cloud images. If tmpfs is used, you would still need /tmp space
 for one uncompressed cloud image and about 20% of that image for working files.
+
+Nameservers
+-----------
+
+To ensure elements can access the network, ``disk-image-create``
+replaces the ``/etc/resolv.conf`` within the chroot with a copy of the
+host's file early in the image creation process.
+
+The final ``/etc/resolv.conf`` can be controlled in a number of ways.
+If, during the build, the ``/etc/resolv.conf`` file within the chroot
+is replaced with a symlink, this will be retained in the final image
+[1]_.  If the file is marked immutable, it will also not be touched.
+
+.. [1] This somewhat odd case was added for installation of the
+       ``resolvconf`` package, which replaces ``/etc/resolv.conf``
+       with a symlink to it's version.  Depending on its contents, and
+       what comes after the installation in the build, this mostly
+       works.
+
+If you would like specific contents within the final
+``/etc/resolv.conf`` you can place them into
+``/etc/resolv.conf.ORIG`` during the build.  As one of the final
+steps, this file will be ``mv`` to ``/etc/resolv.conf``.
 
 
 Chosing an Architecture
