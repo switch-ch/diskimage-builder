@@ -44,6 +44,7 @@ DEFAULT_SKIP_TESTS=(
     fedora/build-succeeds
     ubuntu/trusty-build-succeeds
     ubuntu/xenial-build-succeeds
+    ubuntu/bionic-build-succeeds
 
     # No longer reasonable to test upstream (lacks a mirror in infra)
     # Note this is centos6 and should probably be removed
@@ -51,6 +52,9 @@ DEFAULT_SKIP_TESTS=(
 
     # This job is a bit unreliable, even if we get mirroring
     debian-minimal/testing-build-succeeds
+
+    # Replaced by bionic
+    ubuntu-minimal/trusty-build-succeeds
 )
 
 # The default output formats (specified to disk-image-create's "-t"
