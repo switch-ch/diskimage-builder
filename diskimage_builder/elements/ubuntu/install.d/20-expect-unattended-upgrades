@@ -1,6 +1,0 @@
-#!/usr/bin/expect -f
-spawn dpkg-reconfigure -plow unattended-upgrades
-expect "Automatically download and install stable updates?"
-send "\tYes\r" 
-#done
-expect eof
