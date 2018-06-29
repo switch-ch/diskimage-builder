@@ -187,24 +187,13 @@ function install_grub2 {
 
     echo "GRUB_CMDLINE_LINUX_DEFAULT=\"${GRUB_CMDLINE_LINUX_DEFAULT}\"" >>/etc/default/grub
     echo 'GRUB_SERIAL_COMMAND="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1"' >>/etc/default/grub
+    sed -i -e "s/\(^GRUB_CMDLINE_LINUX.*\)\"$/\1 ${DIB_BOOTLOADER_DEFAULT_CMDLINE}\"/" /etc/default/grub
+
     if type grub2-mkconfig >/dev/null; then
         GRUB_MKCONFIG="grub2-mkconfig -o $GRUB_CFG"
     else
         GRUB_MKCONFIG="grub-mkconfig -o $GRUB_CFG"
     fi
-    DISTRO_NAME=${DISTRO_NAME:-}
-    case $DISTRO_NAME in
-        'ubuntu'|'debian')
-            sed -i -e "s/\(^GRUB_CMDLINE_LINUX.*\)\"$/\1 ${DIB_BOOTLOADER_DEFAULT_CMDLINE}\"/" /etc/default/grub
-            GRUB_MKCONFIG=update-grub
-        ;;
-        'fedora'|'centos7'|'centos')
-            echo "GRUB_CMDLINE_LINUX=\"${DIB_BOOTLOADER_DEFAULT_CMDLINE}\"" >>/etc/default/grub
-        ;;
-        'opensuse')
-            sed -i -e "s/\(^GRUB_CMDLINE_LINUX.*\)\"$/\1 ${DIB_BOOTLOADER_DEFAULT_CMDLINE}\"/" /etc/default/grub
-        ;;
-    esac
 
     # os-prober leaks /dev/sda into config file in dual-boot host
     # Disable grub-os-prober to avoid the issue  while running
@@ -234,6 +223,14 @@ function install_grub2 {
     # Fix efi specific instructions in grub config file
     if [ -d /sys/firmware/efi ]; then
         sed -i 's%\(initrd\|linux\)efi /boot%\1 /boot%g' $GRUB_CFG
+    fi
+
+    # when using efi, and having linux16/initrd16, it needs to be replaced
+    # by linuxefi/initrdefi. When building images on a non-efi system,
+    # the 16 suffix is added to linux/initrd entries, but we need it to be
+    # linuxefi/initrdefi for the image to boot under efi
+    if [[ ${DIB_BLOCK_DEVICE} == "efi" ]]; then
+        sed -i 's%\(linux\|initrd\)16 /boot%\1efi /boot%g' $GRUB_CFG
     fi
 }
 

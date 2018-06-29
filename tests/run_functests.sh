@@ -6,7 +6,7 @@ set -o pipefail
 BASE_DIR=$(cd $(dirname "$0")/.. && pwd)
 
 # then execute tests for elements
-export DIB_CMD=disk-image-create
+export DIB_CMD="disk-image-create"
 export DIB_ELEMENTS=$(python -c '
 import diskimage_builder.paths
 diskimage_builder.paths.show_path("elements")')
@@ -106,6 +106,22 @@ function wait_minus_n {
     fi
 }
 
+# This takes the status and the "$logfile" argument passed to
+# disk-image-create and renames the file, so you can quickly see
+# in results which tests have failed.
+function logfile_status {
+    local status="$1"
+    local arg="$2"
+    local filename
+    if [[ -z "${arg// }" ]]; then
+        return
+    fi
+
+    filename="$(echo $arg | cut -f2 -d' ')"
+    echo "Moving ${filename} to ${filename/.log/.$status.log}"
+    mv "$filename" ${filename/.log/.$status.log}
+}
+
 # run_disk_element_test <test_element> <element> <use_tmp> <output_formats>
 #  Run a disk-image-build build of ELEMENT including any elements
 #  specified by TEST_ELEMENT.  Pass OUTPUT_FORMAT to "-t"
@@ -114,6 +130,7 @@ function run_disk_element_test() {
     local element=$2
     local dont_use_tmp=$3
     local output_format="$4"
+    local logfile="$5"
 
     local use_tmp_flag=""
     local dest_dir=$(mktemp -d)
@@ -132,6 +149,7 @@ function run_disk_element_test() {
         ELEMENTS_PATH=$DIB_ELEMENTS/$element/test-elements \
         $DIB_CMD -x -t ${output_format} \
                        ${use_tmp_flag} \
+                       ${logfile} \
                        -o $dest_dir/image -n $element $test_element 2>&1 \
            | log_with_prefix "${element}/${test_element}"; then
 
@@ -139,6 +157,7 @@ function run_disk_element_test() {
             if ! [ -f "$dest_dir/image.qcow2" ]; then
                 echo "Error: qcow2 build failed for element: $element, test-element: $test_element."
                 echo "No image $dest_dir/image.qcow2 found!"
+                logfile_status "FAIL" "${logfile}"
                 exit 1
             fi
         fi
@@ -147,20 +166,25 @@ function run_disk_element_test() {
         if ! [ -f "$dest_dir/image.tar" ]; then
             echo "Error: Build failed for element: $element, test-element: $test_element."
             echo "No image $dest_dir/image.tar found!"
+            logfile_status "FAIL" "${logfile}"
             exit 1
         else
             if tar -tf $dest_dir/image.tar | grep -q /tmp/dib-test-should-fail; then
                 echo "Error: Element: $element, test-element $test_element should have failed, but passed."
+                logfile_status "FAIL" "${logfile}"
                 exit 1
             else
                 echo "PASS: Element $element, test-element: $test_element"
+                logfile_status "PASS" "${logfile}"
             fi
         fi
     else
         if [ -f "${dest_dir}/dib-test-should-fail" ]; then
             echo "PASS: Element $element, test-element: $test_element"
+            logfile_status "PASS" "${logfile}"
         else
             echo "Error: Build failed for element: $element, test-element: $test_element."
+            logfile_status "FAIL" "${logfile}"
             exit 1
         fi
     fi
@@ -220,11 +244,12 @@ done
 JOB_MAX_CNT=1
 LOG_DATESTAMP=0
 KEEP_OUTPUT=0
+LOG_DIRECTORY=''
 
 #
 # Parse args
 #
-while getopts ":hlj:t" opt; do
+while getopts ":hlj:tL:" opt; do
     case $opt in
         h)
             echo "run_functests.sh [-h] [-l] <test> <test> ..."
@@ -233,6 +258,7 @@ while getopts ":hlj:t" opt; do
             echo "  -j : parallel job count (default to 1)"
             echo "  -t : prefix log messages with timestamp"
             echo "  -k : keep output directories"
+            echo "  -L : output logs into this directory"
             echo "  <test> : functional test to run"
             echo "           Special test 'all' will run all tests"
             exit 0
@@ -260,6 +286,9 @@ while getopts ":hlj:t" opt; do
             ;;
         k)
             KEEP_OUTPUT=1
+            ;;
+        L)
+            LOG_DIRECTORY=${OPTARG}
             ;;
         \?)
             echo "Invalid option: -$OPTARG"
@@ -303,6 +332,11 @@ else
         fi
         TESTS_TO_RUN+=("${test}")
     done
+fi
+
+if [[ -n "${LOG_DIRECTORY}" ]]; then
+   mkdir -p "${LOG_DIRECTORY}"
+   export DIB_QUIET=1
 fi
 
 # print a little status info
@@ -365,8 +399,15 @@ for test in "${TESTS_TO_RUN[@]}"; do
         element_output=$(cat ${element_output_override})
     fi
 
+    log_argument=' '
+    if [[ -n "${LOG_DIRECTORY}" ]]; then
+        log_argument="--logfile ${LOG_DIRECTORY}/${element}_${test_element}.log"
+    fi
+
     echo "Running $test ($element_type)"
-    run_${element_type}_element_test $test_element $element ${DONT_USE_TMP} "${element_output}" &
+    run_${element_type}_element_test \
+        $test_element $element \
+        ${DONT_USE_TMP} "${element_output}" "$log_argument" &
 done
 
 # Wait for the rest of the jobs
