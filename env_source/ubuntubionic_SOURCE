@@ -1,4 +1,7 @@
 #!/bin/bash
+unset DIB_RELEASE
+unset DIB_CLOUD_INIT_ETC_HOSTS
+unset DIB_DISTRIBUTION_MIRROR
 export DIB_RELEASE=bionic
 export DIB_DISTRIBUTION_MIRROR=http://ch.archive.ubuntu.com/ubuntu
 export DIB_CLOUD_INIT_ETC_HOSTS=localhost

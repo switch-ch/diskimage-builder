@@ -1,4 +1,5 @@
 #!/bin/bash
-export DIB_RELEASE=27
-export DIB_DISTRIBUTION_MIRROR=http://mirror.switch.ch/ftp/mirror/fedora/linux
+unset DIB_RELEASE
+unset DIB_CLOUD_INIT_ETC_HOSTS
+unset DIB_DISTRIBUTION_MIRROR
 export DIB_CLOUD_INIT_ETC_HOSTS=localhost
