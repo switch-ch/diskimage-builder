@@ -1,7 +1,0 @@
-#!/bin/bash
-
-set -eu
-set -o pipefail
-
-yum -y install epel-release
-
