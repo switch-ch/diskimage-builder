@@ -91,7 +91,7 @@ cd /opt
 if curl -s --head  --request GET http://86.119.37.182/maven/apache-maven-3.3.9-bin.tar.gz | grep "200 OK" > /dev/null
     then sudo wget http://86.119.37.182/maven/apache-maven-3.3.9-bin.tar.gz
 else
-    sudo wget http://mirror.switch.ch/mirror/apache/dist/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz
+    sudo wget https://www-eu.apache.org/dist/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz
 fi
 sudo tar xzvf apache-maven-3.3.9-bin.tar.gz
 
