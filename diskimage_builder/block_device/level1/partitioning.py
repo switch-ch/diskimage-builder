@@ -42,8 +42,7 @@ class Partitioning(PluginBase):
         # Because using multiple partitions of one base is done
         # within one object, there is the need to store a flag if the
         # creation of the partitions was already done.
-        self.already_created = False
-        self.already_cleaned = False
+        self.number_of_partitions = 0
 
         # Parameter check
         if 'base' not in config:
@@ -136,7 +135,7 @@ class Partitioning(PluginBase):
         for p in self.partitions:
             args = {}
             args['pnum'] = pnum
-            args['name'] = '"%s"' % p.get_name()
+            args['name'] = '%s' % p.get_name()
             args['type'] = '%s' % p.get_type()
 
             # convert from a relative/string size to bytes
@@ -149,9 +148,11 @@ class Partitioning(PluginBase):
             assert size <= disk_free
             args['size'] = size // (1024 * 1024)
 
-            new_cmd = ("-n {pnum}:0:+{size}M -t {pnum}:{type} "
-                       "-c {pnum}:{name}".format(**args))
-            cmd.extend(new_cmd.strip().split(' '))
+            new_cmd = ("-n", "{pnum}:0:+{size}M".format(**args),
+                       "-t", "{pnum}:{type}".format(**args),
+                       # Careful with this one, as {name} could have spaces
+                       "-c", "{pnum}:{name}".format(**args))
+            cmd.extend(new_cmd)
 
             # Fill the state; we mount all partitions with kpartx
             # below once we're done.  So the device this partition
@@ -177,10 +178,10 @@ class Partitioning(PluginBase):
         # in the graph, so for every partition we get a create() call
         # as the walk happens.  But we only need to create the
         # partition table once...
-        if self.already_created:
+        self.number_of_partitions += 1
+        if self.number_of_partitions > 1:
             logger.info("Not creating the partitions a second time.")
             return
-        self.already_created = True
 
         # the raw file on disk
         self.image_path = self.state['blockdev'][self.base]['image']
@@ -215,13 +216,16 @@ class Partitioning(PluginBase):
 
         return
 
-    def cleanup(self):
-        # remove the partition mappings made for the parent
-        # block-device by create() above.  this is called from the
-        # child PartitionNode umount/delete/cleanup.  Thus every
-        # partition calls it, but we only want to do it once and our
-        # gate.
-        if not self.already_cleaned:
-            self.already_cleaned = True
+    def umount(self):
+        # Remove the partition mappings made for the parent
+        # block-device by create() above.  This is called from the
+        # child PartitionNode umount.  Thus every
+        # partition calls it, but we only want to do it once when
+        # we know this is the very last partition
+        self.number_of_partitions -= 1
+        if self.number_of_partitions == 0:
             exec_sudo(["kpartx", "-d",
                        self.state['blockdev'][self.base]['device']])
+
+    def cleanup(self):
+        pass

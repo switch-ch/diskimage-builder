@@ -69,7 +69,9 @@ The phases are:
 #. ``pre-install.d``
 #. ``install.d``
 #. ``post-install.d``
+#. ``post-root.d``
 #. ``block-device.d``
+#. ``pre-finalise.d``
 #. ``finalise.d``
 #. ``cleanup.d``
 
@@ -97,6 +99,9 @@ The phases are:
   * inputs: ``$TMP_HOOKS_PATH``
   * outputs: None
 
+  Contents placed under ``$TMP_HOOKS_PATH`` will be available at
+  ``/tmp/in_target.d`` inside the chroot.
+
 ``pre-install.d``
   Run code in the chroot before customisation or packages are installed. A good
   place to add apt repositories.
@@ -113,13 +118,20 @@ The phases are:
 ``post-install.d``
   Run code in the chroot. This is a good place to perform tasks you want to
   handle after the OS/application install but before the first boot of the
-  image.  Some examples of use would be:
+  image.  Some examples of use would be
 
-    Run ``chkconfig`` to disable unneeded services
-
-    Clean the cache left by the package manager to reduce the size of the image.
+    * Run ``chkconfig`` to disable unneeded services
+    * Clean the cache left by the package manager to reduce the size
+      of the image.
 
   * runs: **in chroot**
+
+``post-root.d``
+  Run code outside the chroot. This is a good place to perform tasks that
+  cannot run inside the chroot and must run after installing things. The
+  root filesystem content is rooted at ``$TMP_BUILD_DIR/mnt``.
+
+  * runs: **outside chroot**
 
 ``block-device.d``
   Customise the block device that the image will be made on (for example to
@@ -133,6 +145,16 @@ The phases are:
     * ``$TARGET_ROOT={path}``
 
   * outputs: ``$IMAGE_BLOCK_DEVICE={path}``
+
+``pre-finalise.d``
+
+  Final tuning of the root filesystem, outside the chroot.  Filesystem
+  content has been copied into the final file system which is rooted
+  at ``$TMP_BUILD_DIR/mnt``.  You might do things like re-mount a
+  cache directory that was used during the build in this phase (with
+  subsequent unmount in ``cleanup.d``).
+
+  * runs: **outside chroot**
 
 ``finalise.d``
   Perform final tuning of the root filesystem. Runs in a chroot after the root
@@ -151,7 +173,7 @@ The phases are:
   settings to use the image build environment HTTP proxy are removed here in
   the dpkg element.
 
-  * runs: outside chroot
+  * runs: **outside chroot**
   * inputs:
 
     * ``$ARCH=i386|amd64|armhf|arm64``

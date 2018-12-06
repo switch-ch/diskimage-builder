@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-import subprocess
 
 from diskimage_builder.block_device.exception \
     import BlockDeviceSetupException
@@ -155,7 +154,7 @@ class VgsNode(NodeBase):
             'devices': self.base,
         }
 
-    def _cleanup(self):
+    def _umount(self):
         exec_sudo(['vgchange', '-an', self.name])
 
     def get_edges(self):
@@ -214,7 +213,7 @@ class LvsNode(NodeBase):
             'device': '/dev/mapper/%s-%s' % (self.base, self.name)
         }
 
-    def _cleanup(self):
+    def _umount(self):
         exec_sudo(['lvchange', '-an',
                    '/dev/%s/%s' % (self.base, self.name)])
 
@@ -280,49 +279,29 @@ class LVMNode(NodeBase):
         for lvs in self.lvs:
             lvs._create()
 
-    def cleanup(self):
+    def umount(self):
         for lvs in self.lvs:
-            lvs._cleanup()
+            lvs._umount()
 
         for vgs in self.vgs:
-            vgs._cleanup()
+            vgs._umount()
 
         exec_sudo(['udevadm', 'settle'])
 
-
-class LVMCleanupNode(NodeBase):
-    def __init__(self, name, state, pvs):
-        """Cleanup Node for LVM
-
-        Information about the PV, VG and LV is typically
-        cached in lvmetad. Even after removing PV device and
-        partitions this data is not automatically updated
-        which leads to a couple of problems.
-        the 'pvscan --cache' scans the available disks
-        and updates the cache.
-        This must be called after the cleanup of the
-        containing block device is done.
-        """
-        super(LVMCleanupNode, self).__init__(name, state)
-        self.pvs = pvs
-
-    def create(self):
-        # This class is used for cleanup only
-        pass
-
     def cleanup(self):
+        # Information about the PV, VG and LV is typically
+        # cached in lvmetad. Even after removing PV device and
+        # partitions this data is not automatically updated
+        # which leads to a couple of problems.
+        # the 'pvscan --cache' scans the available disks
+        # and updates the cache.
+        # This is in cleanup because it must be called after the
+        # umount of the containing block device is done, (which should
+        # all be done in umount phase).
         try:
             exec_sudo(['pvscan', '--cache'])
-        except subprocess.CalledProcessError as cpe:
-            logger.debug("pvscan call result [%s]", cpe)
-
-    def get_edges(self):
-        # This node depends on all physical device(s), which is
-        # recorded in the "base" argument of the PV nodes.
-        edge_to = set()
-        for pv in self.pvs:
-            edge_to.add(pv.base)
-        return ([], edge_to)
+        except BlockDeviceSetupException as e:
+            logger.info("pvscan call failed [%s]", e.returncode)
 
 
 class LVMPlugin(PluginBase):
@@ -412,12 +391,10 @@ class LVMPlugin(PluginBase):
         # create the "driver" node
         self.lvm_node = LVMNode(config['name'], state,
                                 self.pvs, self.lvs, self.vgs)
-        self.lvm_cleanup_node = LVMCleanupNode(
-            config['name'] + "-CLEANUP", state, self.pvs)
 
     def get_nodes(self):
         # the nodes for insertion into the graph are all of the pvs,
-        # vgs and lvs nodes we have created above, the root node and
+        # vgs and lvs nodes we have created above and the root node and
         # the cleanup node.
         return self.pvs + self.vgs + self.lvs \
-            + [self.lvm_node, self.lvm_cleanup_node]
+            + [self.lvm_node]

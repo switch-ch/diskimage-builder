@@ -1,0 +1,31 @@
+#!/bin/bash
+
+if [ ${DIB_DEBUG_TRACE:-1} -gt 0 ]; then
+    set -x
+fi
+set -eu
+set -o pipefail
+
+# This would only not be here if there was no kmod package installed,
+# which can happen in some container situations.  Obviously
+# blacklisting a kernel module is not really useful; however allowing
+# this to work can allow modules that do other things that *are*
+# useful for a container to "just work" without a whole bunch of
+# refactoring.
+if [ ! -d /etc/modprobe.d ]; then
+    # ^ so we can see in the logs if we took this path ...
+    mkdir -p /etc/modprobe.d
+fi
+
+# copy all modprobe.d snippets to /etc/modprobe.d
+
+eval declare -A image_elements=($(get_image_element_array))
+
+for i in "${!image_elements[@]}"; do
+    element=$i
+    element_dir=${image_elements[$i]}
+
+    if [ -d "${element_dir}/modprobe.d/" ]; then
+        sudo cp ${element_dir}/modprobe.d/*.conf $TMP_MOUNT_PATH/etc/modprobe.d/
+    fi
+done
