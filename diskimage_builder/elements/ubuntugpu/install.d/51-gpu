@@ -11,7 +11,7 @@ apt-get -y update
 apt-get -y install cuda
 
 wget http://images.cloud.switch.ch/private/ahRao2aiXie5-gpu/libcudnn6_6.0.21-1+cuda8.0_amd64.deb
-apt-get install ./libcudnn6_6.0.21-1+cuda8.0_amd64.deb
+apt-get -y install ./libcudnn6_6.0.21-1+cuda8.0_amd64.deb
 
 wget http://images.cloud.switch.ch/private/ahRao2aiXie5-gpu/cudnn-8.0-linux-x64-v5.1.tgz
 
