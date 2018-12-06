@@ -8,7 +8,6 @@ add-apt-repository -y ppa:graphics-drivers/ppa
 wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-repo-ubuntu1604_8.0.61-1_amd64.deb
 apt-get -y install ./cuda-repo-ubuntu1604_8.0.61-1_amd64.deb
 apt-get -y update
-wget  http://images.cloud.switch.ch/private/ahRao2aiXie5-gpu/libcudnn6_6.0.21-1+cuda8.0_amd64.deb
 apt-get -y install cuda
 
 wget http://images.cloud.switch.ch/private/ahRao2aiXie5-gpu/libcudnn6_6.0.21-1+cuda8.0_amd64.deb
