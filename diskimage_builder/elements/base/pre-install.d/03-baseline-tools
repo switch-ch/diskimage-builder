@@ -12,6 +12,21 @@ case $DISTRO_NAME in
         # Note: add-apt-repository would be nice for RPM platforms too - so when we
         # need something like it, create a wrapper in dpkg/bin and fedora/bin.
         apt-get -y update
-        install-packages software-properties-common
+        if [ "${DIB_RELEASE}" = "xenial" ]; then
+            #
+            # Ubuntu 16.04 (Xenial) only has Python 3 installed by default.
+            # But diskimage-builder currently relies on Python 2 being present,
+            # so we need to install that.
+            #
+            install-packages python
+        fi
+        if [ "${DIB_RELEASE}" = "precise" ]; then
+            install-packages python-software-properties
+        else
+            install-packages software-properties-common
+        fi
+        ;;
+    'fedora')
+        install-packages python
         ;;
 esac

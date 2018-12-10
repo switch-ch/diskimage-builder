@@ -1,0 +1,10 @@
+#!/bin/bash
+
+service ntpd stop
+sed -i 's/centos.pool.ntp.org/ch.pool.ntp.org/g' /etc/ntp.conf
+
+ntpdate 0.ch.pool.ntp.org
+
+chkconfig ntpd on
+
+service ntpd start

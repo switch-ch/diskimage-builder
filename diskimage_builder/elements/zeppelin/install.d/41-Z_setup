@@ -1,0 +1,73 @@
+#!/bin/bash
+echo "Update the system and install build-essentials, python3-dev and pip"
+sudo apt-get update
+sudo apt-get install -y build-essential python3-dev python3-pip
+
+echo "Upgrade setuptools"
+sudo pip3 install --upgrade setuptools
+
+echo "Install jupyter"
+sudo pip3 install jupyter
+
+#Generate randmon password
+export PASSWORD=`openssl rand -hex 3`
+
+# create banner
+echo "" > /etc/issue
+echo "Welcome to the Jupyter SWITCHengines installation" >> /etc/issue
+echo "" >> /etc/issue
+
+echo "" >> /etc/issue
+echo "You can now login to Jupyter via the web interface port 8888 with" >> /etc/issue
+echo "Password: $PASSWORD" >> /etc/issue
+echo ""
+
+cat <<- EOF | sudo tee /root/passwordhelper.py
+import os
+from notebook.auth import passwd
+print (passwd(os.environ['PASSWORD']))
+EOF
+
+export NOTEBOOK_PASSWORD=`python3 /root/passwordhelper.py`
+
+echo "Add content to jupyter_notebook_config.py"
+cat <<- EOF | tee /root/jupyter_notebook_config.py
+# See http://ipython.org/ipython-doc/1/interactive/public_server.html for more information.
+# Configuration file for ipython-notebook.
+import os
+
+c = get_config()
+c.NotebookApp.ip = '*'
+c.NotebookApp.port = 8888
+c.NotebookApp.open_browser = False
+c.NotebookApp.profile = u'default'
+c.IPKernelApp.matplotlib = 'inline'
+headers = {
+   'X-Frame-Options': 'ALLOWALL',
+}
+c.NotebookApp.allow_origin = '*'
+c.NotebookApp.allow_credentials = True
+
+c.NotebookApp.base_url = '/ipython/'
+c.NotebookApp.webapp_settings = {'static_url_prefix':'/ipython/static/'}
+
+c.NotebookApp.password = '$NOTEBOOK_PASSWORD'
+
+if os.environ.get('CORS_ORIGIN', 'none') != 'none':
+   c.NotebookApp.allow_origin = os.environ['CORS_ORIGIN']
+
+c.NotebookApp.webapp_settings['headers'] = headers
+EOF
+
+echo "Run jupyter"
+echo "In rc.local"
+cat <<- EOF | sudo tee -a /etc/rc.local
+sudo -u ubuntu -i mkdir /home/ubuntu/.jupyter/
+cp /root/jupyter_notebook_config.py /home/ubuntu/.jupyter/
+chown ubuntu /home/ubuntu/.jupyter/jupyter_notebook_config.py
+sudo -u ubuntu -i jupyter-notebook &
+exit 0
+EOF
+
+
+

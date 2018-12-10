@@ -1,0 +1,93 @@
+#!/bin/bash
+apt-get install -y language-pack-de figlet pwgen
+
+cat <<- EOF1 > /etc/apt/sources.list.d/r-cran.list
+deb http://stat.ethz.ch/CRAN/bin/linux/ubuntu $DIB_RELEASE/
+EOF1
+
+apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
+apt-get update
+apt-get install -y build-essential
+apt-get install -y libssl-dev
+apt-get install -y libcurl4-openssl-dev
+apt-get install -y libxml2-dev
+apt-get install -y libgfortran-4.8-dev
+apt-get install -y libblas-dev
+apt-get install -y liblapack-dev
+apt-get install -y gfortran
+apt-get install -y r-base
+apt-get install -y libpng12-dev
+apt-get install -y libjpeg-dev
+
+apt-get install -y gdebi-core
+wget https://download2.rstudio.org/rstudio-server-1.1.383-amd64.deb
+gdebi -n rstudio-server-1.1.383-amd64.deb
+
+useradd -m -s /bin/false -p $(openssl passwd -1 rstudio) rstudio
+
+apt-get install -y nginx
+
+cat <<- "EOF1" > /etc/nginx/sites-available/default
+server {
+    listen [::]:80 ipv6only=off;
+
+    location / {
+      proxy_pass http://localhost:8787;
+      proxy_redirect http://localhost:8787/ $scheme://$host/;
+    }
+  }
+EOF1
+
+case "$DIB_INIT_SYSTEM" in
+    systemd)
+
+        cat <<- "EOF" > /etc/systemd/system/rstudio-password.service
+[Unit]
+Description=RStudio Password
+
+[Service]
+Type=oneshot
+ExecStart=/etc/init.d/rstudio-password
+
+[Install]
+WantedBy=rstudio-server.service
+EOF
+        systemctl enable rstudio-password
+        ;;
+
+    upstart)
+        cat <<- "EOF1" > /etc/init/rstudio-password.conf
+start on filesystem
+task
+exec /etc/init.d/rstudio-password
+EOF1
+    ;;
+esac
+
+cat <<- "EOF1" > /etc/init.d/rstudio-password
+#!/bin/bash
+echo "RStudio Password starting"
+FLAG="/var/log/rstudio.log"
+
+if [ ! -f $FLAG ]; then
+    echo "RStudio Password: Set new password"
+    # change password for rstudio
+    PASSWORD=`pwgen 8 1`
+    echo "rstudio:$PASSWORD" | chpasswd
+
+    # create banner
+    echo "" > /etc/issue
+    echo "Welcome to the SWITCHengines RStudio installation" >> /etc/issue
+    echo "" >> /etc/issue
+
+    echo "" >> /etc/issue
+    echo "You can now login to RStudio via the web interface with" >> /etc/issue
+    echo "Username: rstudio" >> /etc/issue
+    echo "Password: $PASSWORD" >> /etc/issue
+    echo ""
+
+    echo $PASSWORD > $FLAG
+fi
+EOF1
+
+chmod +x /etc/init.d/rstudio-password

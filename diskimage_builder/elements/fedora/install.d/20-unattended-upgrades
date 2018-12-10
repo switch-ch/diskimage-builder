@@ -1,0 +1,7 @@
+#!/bin/bash
+set -eu
+set -o pipefail
+#su -c '/sbin/chkconfig --level 345 yum on; /sbin/service yum start'
+sed -i 's/update_cmd = default/update_cmd = security/g' /etc/yum/yum-cron.conf
+sed -i 's/apply_updates = no/apply_updates = yes/g' /etc/yum/yum-cron.conf
+systemctl restart yum-cron.service

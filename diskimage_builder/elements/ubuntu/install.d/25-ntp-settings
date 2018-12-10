@@ -1,0 +1,3 @@
+#!/bin/bash
+sed -i 's/ubuntu.pool.ntp.org/ch.pool.ntp.org/g' /etc/ntp.conf
+/etc/init.d/ntp restart
