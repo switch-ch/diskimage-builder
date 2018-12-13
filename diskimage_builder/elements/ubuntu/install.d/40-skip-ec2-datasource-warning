@@ -1,8 +1,0 @@
-#!/bin/bash
-cat << EOF > /etc/cloud/cloud.cfg.d/99-ec2-datasource.cfg
-#cloud-config
- datasource:
-  Ec2:
-   strict_id: false
-EOF
-
