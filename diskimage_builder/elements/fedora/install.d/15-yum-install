@@ -2,5 +2,4 @@
 set -eu
 set -o pipefail
 yum -y update
-yum -y install ntp 
 yum -y install yum-cron
