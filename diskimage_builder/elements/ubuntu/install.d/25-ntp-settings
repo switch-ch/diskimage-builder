@@ -8,7 +8,7 @@ then
     cp -p /etc/systemd/timesyncd.conf /etc/systemd/timesyncd.conf.back
     cat > /etc/systemd/timesyncd.conf <<EOF
 [Time]
-NTP=0.ch.pool.ntp.org,1.ch.pool.ntp.org,2.ch.pool.ntp.org,3.ch.pool.ntp.org
+NTP=ch.pool.ntp.org
 #FallbackNTP=ntp.ubuntu.com
 #RootDistanceMaxSec=5
 #PollIntervalMinSec=32
