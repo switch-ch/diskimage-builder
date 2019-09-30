@@ -48,7 +48,7 @@ for example. To do this you need to set these variables::
 
 For example to test glean change 364516 do::
 
-  git clone https://git.openstack.org/openstack-infra/glean /tmp/glean
+  git clone https://opendev.org/opendev/glean /tmp/glean
   cd /tmp/glean
   git review -d 364516
   git checkout -b my-test-ref
@@ -58,3 +58,13 @@ Then set your DIB env vars like this before running DIB::
   DIB_INSTALLTYPE_simple_init=repo
   DIB_REPOLOCATION_glean=/tmp/glean
   DIB_REPOREF_glean=my-test-ref
+
+NetworkManager
+--------------
+
+By default, this uses the "legacy" scripts on each platform.  To use
+NetworkManager instead, set ``DIB_SIMPLE_INIT_NETWORKMANAGER`` to
+non-zero.  See the glean documentation for what the implications for
+this are on each platform.
+
+This is currently only implemented for CentOS and Fedora platforms.

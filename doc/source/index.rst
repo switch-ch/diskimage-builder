@@ -13,21 +13,21 @@ your own elements for even further customization.
 
 ``diskimage-builder`` is used extensively by the `TripleO project
 <https://wiki.openstack.org/wiki/TripleO>`__ and within `OpenStack
-Infrastructure <http://docs.openstack.org/infra/system-config/>`__.
+Infrastructure <https://docs.openstack.org/infra/system-config/>`__.
 
 Code
 ----
 
 Release notes for the latest and previous versions are available at:
 
-* `http://docs.openstack.org/releasenotes/diskimage-builder/
-  <http://docs.openstack.org/releasenotes/diskimage-builder/>`__
+* `https://docs.openstack.org/releasenotes/diskimage-builder/
+  <https://docs.openstack.org/releasenotes/diskimage-builder/>`__
 
 
 The code is available at:
 
-* `https://git.openstack.org/cgit/openstack/diskimage-builder/
-  <https://git.openstack.org/cgit/openstack/diskimage-builder/>`__
+* `https://opendev.org/openstack/diskimage-builder/
+  <https://opendev.org/openstack/diskimage-builder/>`__
 
 
 Issues
@@ -42,8 +42,8 @@ Communication
 -------------
 
 Communication among the diskimage-builder developers happens on IRC in
-``#openstack-dib`` on freenode and on the ``openstack-dev`` mailing list
-(``openstack-dev@lists.openstack.org``).
+``#openstack-dib`` on freenode and on the ``openstack-discuss`` mailing list
+(``openstack-discuss@lists.openstack.org``).
 
 
 Table of Contents
@@ -56,9 +56,3 @@ Table of Contents
    developer/index
    elements
    specs/README
-
-.. # just link this on the dev page
-.. toctree::
-   :hidden:
-
-   api/autoindex

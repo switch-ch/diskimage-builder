@@ -56,12 +56,27 @@ tarball.
 
 The ``DIB_DEBOOTSTRAP_EXTRA_ARGS`` environment variable may be used to
 pass extra arguments to the debootstrap command used to create the
-base filesystem image. If --keyring is is used in ``DIB_DEBOOTSTRAP_EXTRA_ARGS``,
+base filesystem image. If --keyring is used in ``DIB_DEBOOTSTRAP_EXTRA_ARGS``,
 it will override ``DIB_APT_KEYRING`` if that is used as well.
 
 For further information about ``DIB_DEBIAN_DEBOOTSTRAP_SCRIPT`` ,
 ``DIB_DEBIAN_USE_DEBOOTSTRAP_CACHE`` and ``DIB_DEBOOTSTRAP_EXTRA_ARGS``
 please consult "README.rst" of the debootstrap element.
+
+----------
+Networking
+----------
+
+By default ``/etc/network/interfaces.d/eth[0|1]`` files will be
+created and enabled with DHCP networking.  If you do not wish this to
+be done, set ``DIB_APT_MINIMAL_CREATE_INTERFACES`` to ``0``.  If you
+need different interface names than ``eth[0|1]`` set
+``DIB_NETWORK_INTERFACE_NAMES`` to a space separated list of network
+interface names like:
+
+.. code-block:: bash
+
+   export DIB_NETWORK_INTERFACE_NAMES="ens3 ens4"
 
 -------------------
 Note on ARM systems

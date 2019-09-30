@@ -5,7 +5,8 @@
     },
     "debian": {
       "dhcp-client": "isc-dhcp-client",
-      "ifupdown": "ifupdown"
+      "ifupdown": "ifupdown",
+      "NetworkManager": "network-manager"
     },
     "gentoo": {
       "dhcp-client": "net-misc/dhcp",
@@ -13,11 +14,23 @@
       "net-tools": "sys-apps/net-tools"
     },
     "suse": {
-      "dhcp-client": "dhcp-client"
+      "dhcp-client": "dhcp-client",
+      "network-scripts": "wicked-service"
+    }
+  },
+  "release": {
+    "fedora": {
+      "29": {
+        "network-scripts": "network-scripts"
+      },
+      "30": {
+        "network-scripts": "network-scripts"
+      }
     }
   },
   "default": {
     "dhcp-client": "isc-dhcp-client",
-    "ifupdown": ""
+    "ifupdown": "",
+    "network-scripts": ""
   }
 }

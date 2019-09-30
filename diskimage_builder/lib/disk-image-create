@@ -62,6 +62,7 @@ function show_options () {
     echo "    --logfile -- save run output to given logfile (implies DIB_QUIET=1)"
     echo "    --checksum -- generate MD5 and SHA256 checksum files for the created image"
     echo "    --image-size size -- image size in GB for the created image"
+    echo "    --image-extra-size size -- extra image size in GB for the created image"
     echo "    --image-cache directory -- location for cached images(default ~/.cache/image-create)"
     echo "    --max-online-resize size -- max number of filesystem blocks to support when resizing."
     echo "       Useful if you want a really large root partition when the image is deployed."
@@ -70,6 +71,7 @@ function show_options () {
     echo "       Making this value unnecessarily large will consume extra disk space "
     echo "       on the root partition with extra file system inodes."
     echo "    --min-tmpfs size -- minimum size in GB needed in tmpfs to build the image"
+    echo "    --mkfs-journal-size -- filesystem journal size in MB to pass to mkfs."
     echo "    --mkfs-options -- option flags to be passed directly to mkfs."
     echo "       Options should be passed as a single string value."
     echo "    --no-tmpfs -- do not use tmpfs to speed image build"
@@ -84,7 +86,7 @@ function show_options () {
     echo "    --docker-target -- specify the repo and tag to use if the output type is docker. Defaults to the value of output imagename"
     if [ "$IS_RAMDISK" == "0" ]; then
         echo "    -n skip the default inclusion of the 'base' element"
-        echo "    -p package[,p2...] [-p p3] -- extra packages to install in the image.  Runs once, after 'install.d' phase.  Can be specified mulitple times"
+        echo "    -p package[,p2...] [-p p3] -- extra packages to install in the image.  Runs once, after 'install.d' phase.  Can be specified multiple times"
     fi
     echo "    -h|--help -- display this help and exit"
     echo "    --version -- display version and exit"
@@ -121,6 +123,7 @@ DIB_DEBUG_TRACE=${DIB_DEBUG_TRACE:-0}
 INSTALL_PACKAGES=""
 IMAGE_TYPES=("qcow2")
 COMPRESS_IMAGE="true"
+DIB_GZIP_BIN=${DIB_GZIP_BIN:-"gzip"}
 ROOT_LABEL=""
 DIB_DEFAULT_INSTALLTYPE=${DIB_DEFAULT_INSTALLTYPE:-"source"}
 MKFS_OPTS=""
@@ -147,8 +150,10 @@ while true ; do
         -p) IFS="," read -a _INSTALL_PACKAGES <<< "$2"; export INSTALL_PACKAGES=( ${INSTALL_PACKAGES[@]} ${_INSTALL_PACKAGES[@]} ) ; shift 2 ;;
         --checksum) shift; export DIB_CHECKSUM=1;;
         --image-size) export DIB_IMAGE_SIZE=$2; shift 2;;
+        --image-extra-size) export DIB_IMAGE_EXTRA_SIZE=$2; shift 2;;
         --image-cache) export DIB_IMAGE_CACHE=$2; shift 2;;
         --max-online-resize) export MAX_ONLINE_RESIZE=$2; shift 2;;
+        --mkfs-journal-size) export DIB_JOURNAL_SIZE=$2; shift 2;;
         --mkfs-options) MKFS_OPTS=$2; shift 2;;
         --min-tmpfs) export DIB_MIN_TMPFS=$2; shift 2;;
         --no-tmpfs) shift; export DIB_NO_TMPFS=1;;
@@ -376,8 +381,15 @@ else
     echo "Calculating image size (this may take a minute)..."
     sudo du -a -c -x ${TMP_BUILD_DIR}/built > ${du_output}
     # the last line is the total size from "-c".
-    # scale this by 0.6 to create a slightly bigger image
-    du_size=$(tail -n1 ${du_output} | cut -f1 | awk '{print int($1 / 0.6)}')
+    if [ -n "$DIB_IMAGE_EXTRA_SIZE" ]; then
+        # add DIB_IMAGE_EXTRA_SIZE megabytes to create a bigger image as requested
+        du_extra_size=$(echo "$DIB_IMAGE_EXTRA_SIZE" | awk '{printf("%d\n",$1 * 1024)}')
+        du_size_tmp=$(tail -n1 ${du_output} | cut -f1)
+        du_size=$(echo "$du_size_tmp $du_extra_size" | awk '{print int($1 + $2)}')
+    else
+        # scale this by 0.6 to create a slightly bigger image
+        du_size=$(tail -n1 ${du_output} | cut -f1 | awk '{print int($1 / 0.6)}')
+    fi
     $xtrace
 fi
 
@@ -417,16 +429,34 @@ fi
 
 rm -f ${du_output}
 
+if [ -n "$DIB_JOURNAL_SIZE" ]; then
+    journal_size="$DIB_JOURNAL_SIZE"
+else
+    journal_size=64
+fi
+
 if [ "$DIB_ROOT_FSTYPE" = "ext4" ] ; then
   # Very conservative to handle images being resized a lot
   # We set journal size to 64M so our journal is large enough when we
   # perform an FS resize.
-  MKFS_OPTS="-i 4096 -J size=64 $MKFS_OPTS"
+  MKFS_OPTS="-i 4096 -J size=$journal_size $MKFS_OPTS"
   # Grow the image size to account for the journal, only if the user
   # has not asked for a specific size.
   if [ -z "$DIB_IMAGE_SIZE" ]; then
-    du_size=$(( $du_size + 65536 ))
+    du_size=$(( $du_size + ($journal_size * 1024) ))
   fi
+fi
+
+# EFI system partitions default to be quite large at 512mb for maximum
+# compatability (see notes in
+# 7fd52ba84180b4e749ccf4c9db8c49eafff46ea8) .  We need to increase the
+# total size to account for this, or we run out of space creating the
+# final image.  See if we have included the block-device-efi element,
+# which implies we have a large EFI partition, and then pad the final
+# image size.
+if [[ ${IMAGE_ELEMENT} =~ "block-device-efi" ]]; then
+    echo "Expanding disk for EFI partition"
+    du_size=$(( $du_size + (525 * 1024) ))
 fi
 
 # Rounding down size so that is is a multiple of 64, works around a bug in

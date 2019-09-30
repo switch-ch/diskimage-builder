@@ -15,14 +15,13 @@ if [[ ${GENTOO_OVERLAYS} != '' ]]; then
         fix_shm
     fi
 
-    if [[ ! -f /usr/portage/profiles ]]; then
+    if [[ ! -f ${PORTDIR}/profiles ]]; then
         emerge-webrsync -q
     fi
 
     # upstream has problems with supporting other libcs still
     if [[ "${GENTOO_PROFILE}" == *"musl"* ]]; then
-        echo '>=sys-block/open-iscsi-2.0.875' >> /etc/portage/package.mask/open-iscsi
-        echo '=sys-block/open-iscsi-2.0.874-r2' >> /etc/portage/package.keywords/open-iscsi
+        echo '=sys-block/open-iscsi-2.0.877' >> /etc/portage/package.keywords/open-iscsi
     fi
     emerge ${GENTOO_EMERGE_DEFAULT_OPTS} --oneshot openssl openssh
     # install layman

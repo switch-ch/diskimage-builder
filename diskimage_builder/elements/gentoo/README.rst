@@ -26,11 +26,11 @@ Notes:
 * Other profiles can be used by exporting GENTOO_PROFILE with a valid profile.
   A list of valid profiles follows:
 
-    default/linux/amd64/17.0
-    default/linux/amd64/17.0/no-multilib
-    default/linux/amd64/17.0/hardened
-    default/linux/amd64/17.0/no-multilib/hardened
-    default/linux/amd64/17.0/systemd
+    default/linux/amd64/17.1
+    default/linux/amd64/17.1/no-multilib
+    default/linux/amd64/17.1/hardened
+    default/linux/amd64/17.1/no-multilib/hardened
+    default/linux/amd64/17.1/systemd
 
 * You can set the `GENTOO_PORTAGE_CLEANUP` environment variable to False to
   disable the clean up of portage repositories (including overlays).  This
@@ -39,12 +39,12 @@ Notes:
 * Gentoo supports many different versions of python, in order to select one
   you may use the `GENTOO_PYTHON_TARGETS` environment variable to select
   the versions of python you want on your image.  The format of this variable
-  is a string as follows `"python2_7 python3_5"`.
+  is a string as follows `"python2_7 python3_6"`.
 
 * In addition you can select the primary python version you wish to use (that
   which will be called by running the `python` command.  The
   `GENTOO_PYTHON_ACTIVE_VERSION` is used to set that mapping.  The variable
-  contents can be something like `python3.5`.
+  contents can be something like `python3.6`.
 
 * You can enable overlays using the `GENTOO_OVERLAYS` variable.  In it you
   should put a space separated list of overlays.  The overlays must be in the
