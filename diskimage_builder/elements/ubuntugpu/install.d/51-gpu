@@ -41,6 +41,7 @@ fi
 if [ ! -z "$NVIDIA_CUDA_DEB" ]; then
     wget -nv $NVIDIA_CUDA_REPO$NVIDIA_CUDA_DEB
     dpkg -i $NVIDIA_CUDA_DEB
+    rm ./$NVIDIA_CUDA_DEB
     apt-key adv --fetch-keys $NVIDIA_CUDA_KEY
     apt-get -y update
 else
@@ -52,7 +53,8 @@ fi
 # Install development and runtime
 # Install CUDA and cudnn, cuda
 wget -nv $NVIDIA_ML_REPO$NVIDIA_ML_DEB
-apt install ./$NVIDIA_ML_DEB
+dpkg -i ./$NVIDIA_ML_DEB
+rm ./$NVIDIA_ML_DEB
 apt-get -y update
 # Install NVIDIA driver
 if [ ! -z "$NVIDIA_DRIVER_PKG" ]; then
