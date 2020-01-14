@@ -12,16 +12,24 @@ case "$DIB_INIT_SYSTEM" in
         exit 0
         ;;
     systemd)
-        if [[ ${DISTRO_NAME} =~ (centos|rhel7|fedora) ]]; then
+        if [[ ${DISTRO_NAME} == centos && ${DIB_RELEASE} -eq 7 ]]; then
             if [[ ${DIB_SIMPLE_INIT_NETWORKMANAGER} != 1 ]]; then
                 # NOTE(pabelanger): Glean requires network.service for
                 # these platforms when not using networkmanager
-                systemctl enable network.service
+                if [[ ${DIB_RELEASE} -lt 8 ]]; then
+                    # Not available on Centos 8
+                    # NOTE(ianw) we should evaluate if Fedora needs this
+                    systemctl enable network.service
+                fi
             fi
         elif [[ ${DISTRO_NAME} =~ (opensuse) ]]; then
             # on suse, this is named wicked.service, but it's the same
             # as network.service.
             systemctl enable wicked.service
+        else
+            # NOTE(ianw): it might be better to whitelist platforms in
+            # the future, but for now assume it will "just work"
+            continue
         fi
         ;;
     openrc)
@@ -37,17 +45,3 @@ case "$DIB_INIT_SYSTEM" in
         exit 1
         ;;
 esac
-
-if [[ ${DIB_SIMPLE_INIT_NETWORKMANAGER} != 0 ]]; then
-    # If we are using NetworkManager then we have to avoid having the kernel
-    # configure ipv6 addresses on an interface (via router advertisements)
-    # until NetworkManager starts. If the interface is configured by the
-    # kernel before NetworkManager then NetworkManager will ignore the
-    # interface and not configure ipv4 on it. It does this because it assumes
-    # some other entity is in control of the interface.
-    # Debian has a many year old long bug report detailing this behavior with
-    # the most interesting comment being at the end:
-    # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=755202#331
-    DIB_SIMPLE_INIT_NETWORKMANAGER_IPV6_DELAY=${DIB_SIMPLE_INIT_NETWORKMANAGER_IPV6_DELAY:-30}
-    echo "net.ipv6.conf.default.router_solicitation_delay=${DIB_SIMPLE_INIT_NETWORKMANAGER_IPV6_DELAY}" >> /etc/sysctl.conf
-fi

@@ -21,7 +21,11 @@ $_xtrace
 # note 11- is after 10- which is where DISTRO_NAME is set usually
 
 if [[ "${DISTRO_NAME}" == "ubuntu" ]]; then
-    export DIB_DISTRIBUTION_MIRROR=$NODEPOOL_UBUNTU_MIRROR
+    if [[ "${ARCH}" == "arm64" ]]; then
+        export DIB_DISTRIBUTION_MIRROR=${NODEPOOL_UBUNTU_PORTS_MIRROR}
+    elif [[ "${ARCH}" == "amd64" ]]; then
+        export DIB_DISTRIBUTION_MIRROR=$NODEPOOL_UBUNTU_MIRROR
+    fi
     export DIB_DEBOOTSTRAP_EXTRA_ARGS+=" --no-check-gpg"
 elif [[ "${DISTRO_NAME}" == "debian" ]]; then
     export DIB_DISTRIBUTION_MIRROR=$NODEPOOL_DEBIAN_MIRROR
@@ -53,7 +57,7 @@ if [[ -d ${DIB_OS_CI_YUM_REPOS:-/not/a/path/} ]]; then
             export DIB_YUM_MINIMAL_BOOTSTRAP_REPOS=${DIB_OS_CI_YUM_REPOS}/fedora-minimal/default/yum.repos.d
         fi
     elif [[ "${DISTRO_NAME}" == "centos" ]]; then
-        export DIB_YUM_MINIMAL_BOOTSTRAP_REPOS=${DIB_OS_CI_YUM_REPOS}/centos-minimal/yum.repos.d
+        export DIB_YUM_MINIMAL_BOOTSTRAP_REPOS=${DIB_OS_CI_YUM_REPOS}/centos-minimal/${DIB_RELEASE}/yum.repos.d
     fi
 
 fi
