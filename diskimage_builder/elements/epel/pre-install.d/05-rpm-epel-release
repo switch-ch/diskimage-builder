@@ -8,7 +8,7 @@ set -o pipefail
 
 if [[ ${DISTRO_NAME} =~ "centos" ]]; then
     # Centos has "epel-release" in extras, which is default enabled.
-    yum install -y epel-release
+    ${YUM} install -y epel-release
 else
     # For RHEL, we have to scrape the download page to find the latest
     # release and install that
@@ -34,12 +34,16 @@ else
 fi
 
 if [ ${DIB_EPEL_DISABLED:-0} -ne 0 ]; then
-    yum-config-manager --disable epel
+    if [[ ${YUM} == "dnf" ]]; then
+        dnf config-manager --set-disabled epel
+    else
+        yum-config-manager --disable epel
+    fi
 fi
 
 DIB_EPEL_MIRROR=${DIB_EPEL_MIRROR:-}
 [ -n "$DIB_EPEL_MIRROR" ] || exit 0
 
 # Set the EPEL mirror to use
-sed -e "s|^#baseurl=http://download.fedoraproject.org/pub/epel|baseurl=$DIB_EPEL_MIRROR|;/^mirrorlist=/d;/^metalink=/d" -i /etc/yum.repos.d/epel.repo
+sed -e "s|^#baseurl=http[s]*://download.fedoraproject.org/pub/epel|baseurl=$DIB_EPEL_MIRROR|;/^mirrorlist=/d;/^metalink=/d" -i /etc/yum.repos.d/epel.repo
 

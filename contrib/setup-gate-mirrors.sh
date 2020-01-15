@@ -28,7 +28,6 @@ mkdir -p $FEDORA_MIN_DIR
 cat <<EOF > $FEDORA_MIN_DIR/dib-mirror-fedora.repo
 [fedora]
 name=Fedora \$releasever - \$basearch
-failovermethod=priority
 baseurl=$NODEPOOL_FEDORA_MIRROR/releases/\$releasever/Everything/\$basearch/os/
 enabled=1
 metadata_expire=7d
@@ -41,7 +40,6 @@ EOF
 cat <<EOF > $FEDORA_MIN_DIR/dib-mirror-fedora-updates.repo
 [updates]
 name=Fedora \$releasever - \$basearch - Updates
-failovermethod=priority
 baseurl=$NODEPOOL_FEDORA_MIRROR/updates/\$releasever/Everything/\$basearch/
 enabled=1
 gpgcheck=0
@@ -51,8 +49,8 @@ deltarpm=False
 deltarpm_percentage=0
 EOF
 
-# Centos Minimal
-CENTOS_MIN_DIR=$BASE_DIR/centos-minimal/yum.repos.d
+# Centos 7 Minimal
+CENTOS_MIN_DIR=$BASE_DIR/centos-minimal/yum.repos.d/7
 mkdir -p $CENTOS_MIN_DIR
 
 cat <<EOF > $CENTOS_MIN_DIR/dib-mirror-base.repo
@@ -77,5 +75,33 @@ name=CentOS-\$releasever - Extras
 baseurl=$NODEPOOL_CENTOS_MIRROR/\$releasever/extras/\$basearch/
 gpgcheck=0
 EOF
+
+# Centos 8 Minimal
+CENTOS_MIN_DIR=$BASE_DIR/centos-minimal/yum.repos.d/8
+mkdir -p $CENTOS_MIN_DIR
+
+cat <<EOF > $CENTOS_MIN_DIR/dib-mirror-base.repo
+[base]
+name=CentOS-\$releasever - Base
+baseurl=$NODEPOOL_CENTOS_MIRROR/\$releasever/BaseOS/\$basearch/os/
+gpgcheck=0
+EOF
+
+cat <<EOF > $CENTOS_MIN_DIR/dib-mirror-appstream.repo
+[base]
+name=CentOS-\$releasever - AppStream
+baseurl=$NODEPOOL_CENTOS_MIRROR/\$releasever/AppStream/\$basearch/os/
+gpgcheck=0
+EOF
+
+
+cat <<EOF > $CENTOS_MIN_DIR/dib-mirror-extras.repo
+#additional packages that may be useful
+[extras]
+name=CentOS-\$releasever - Extras
+baseurl=$NODEPOOL_CENTOS_MIRROR/\$releasever/extras/\$basearch/os/
+gpgcheck=0
+EOF
+
 
 ## apt sources (todo)
