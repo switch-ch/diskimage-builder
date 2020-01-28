@@ -1,0 +1,12 @@
+#!/bin/bash
+export DIB_RELEASE=8
+export DIB_CLOUD_INIT_DATASOURCES="Ec2, ConfigDrive"
+unset DIB_DISTRIBUTION_MIRROR
+export DIB_CLOUD_INIT_ETC_HOSTS=localhost
+#export INTERFACE=ens3
+export DIB_DEV_USER_PASSWORD=devuser
+export DIB_DEV_USER_PWDLESS_SUDO=Yes
+export DIB_MODPROBE_BLACKLIST="pcspkr"
+export DIB_SIMPLE_INIT_NETWORKMANAGER=1
+export DIB_BOOTLOADER_DEFAULT_CMDLINE="net.ifnames=0 biosdevname=0"
+export DIB_CLOUD_INIT_DEFAULT_USER='centos'
