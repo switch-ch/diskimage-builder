@@ -4,6 +4,4 @@ set -o pipefail
 
 sed -i 's/upgrade_type = default/upgrade_type = security/g' /etc/dnf/automatic.conf
 sed -i 's/emit_via = stdio/emit_via = motd/g' /etc/dnf/automatic.conf
-#/bin/systemctl enable --now dnf-automatic.timer
-#/sbin/service dnf-automatic.timer
-
+systemctl enable dnf-automatic.timer
