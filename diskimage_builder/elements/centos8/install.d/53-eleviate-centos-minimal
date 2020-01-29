@@ -1,0 +1,6 @@
+#!/bin/bash
+set -eu
+set -o pipefail
+
+# Install the packages not included in centos-minimal to eleviate the image to a standard CentOS 8
+dnf groupinstall -y "Base"
