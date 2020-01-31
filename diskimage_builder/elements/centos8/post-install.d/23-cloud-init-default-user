@@ -9,5 +9,5 @@ set -o pipefail
 # Change the name of the default user if requested.
 if [ -n "${DIB_CLOUD_INIT_DEFAULT_USER:-}" ]; then
         # Changes the default cloud-init user
-        sed -i -e 's/cloud-user/'$DIB_CLOUD_INIT_DEFAULT_USER'/g' /etc/cloud/cloud.cfg
+        sed -i -e 's/name: cloud-user/name: '$DIB_CLOUD_INIT_DEFAULT_USER'/g' /etc/cloud/cloud.cfg
 fi
