@@ -1,10 +1,1 @@
-<<<<<<< HEAD
-cache-url
-redhat-common
-rpm-distro
-source-repositories
-yum
-cloud-init-datasources
-=======
 centos
->>>>>>> master
