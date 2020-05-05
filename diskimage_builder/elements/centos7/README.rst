@@ -1,6 +1,13 @@
 =======
 centos7
 =======
+
+.. warning::
+
+   This element is deprecated and is left only for backward compatibility.
+   Use the `centos` element instead. Note that you should set DIB_RELEASE to 7
+   to indicate which release you are using. Please read the notes.
+
 Use CentOS 7 cloud images as the baseline for built disk images.
 
 For further details see the redhat-common README.

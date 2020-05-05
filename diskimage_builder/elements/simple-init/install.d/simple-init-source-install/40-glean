@@ -21,8 +21,10 @@ fi
 set -eu
 set -o pipefail
 
-if [ "$DIB_PYTHON_VERSION" == "3" ]; then
-    pip3 install glean
-else
-    pip install glean
-fi
+python3 -m venv /usr/glean
+/usr/glean/bin/pip install glean
+
+mkdir -p /usr/local/bin
+ln -sf /usr/glean/bin/glean /usr/local/bin/glean
+ln -sf /usr/glean/bin/glean.sh /usr/local/bin/glean.sh
+ln -sf /usr/glean/bin/glean-install /usr/local/bin/glean-install

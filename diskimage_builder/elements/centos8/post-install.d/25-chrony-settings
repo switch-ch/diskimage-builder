@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# CentOS uses Chrony instead of NTP
+# /etc/chrony.conf
+
+sed -i 's/centos.pool.ntp.org/ch.pool.ntp.org/g' /etc/chrony.conf
