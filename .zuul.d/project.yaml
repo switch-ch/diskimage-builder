@@ -10,13 +10,20 @@
     check:
       jobs:
         - openstack-tox-pylint
+        - opendev-buildset-registry
+        - nodepool-build-image-siblings
         - dib-nodepool-functional-openstack-centos-7-src
         - dib-nodepool-functional-openstack-centos-8-src
-        - dib-nodepool-functional-openstack-fedora-29-src
-        - dib-nodepool-functional-openstack-fedora-30-src
+        - dib-nodepool-functional-openstack-fedora-31-src
         - dib-nodepool-functional-openstack-ubuntu-xenial-src
-        - dib-nodepool-functional-openstack-ubuntu-bionic
         - dib-nodepool-functional-openstack-ubuntu-bionic-src
+        - dib-nodepool-functional-openstack-ubuntu-focal-src
+        # NOTE(ianw): 2020-04-22 these have been out of the gate for a
+        # while; promote to voting after some stability.
+        - dib-nodepool-functional-openstack-opensuse-15-src:
+            voting: false
+        - dib-nodepool-functional-openstack-opensuse-tumbleweed-src:
+            voting: false
         - dib-functests-centos7-python2
         - dib-functests-centos7-python2-image
         - dib-functests-centos7-python2-extras
@@ -28,32 +35,42 @@
         - dib-functests-bionic-python3-image
         - dib-functests-bionic-python3-extras
         - dib-functests-bionic-python3-containers
+        - ironic-python-agent-check-image-dib-centos8
+        # IPA jobs that build an image without further validations.
+        # NOTE(dtantsur): this can be removed when DIB drops CentOS 7
+        # compatibility, but is useful for now since CentOS 7 is used in
+        # ironic Train CI.
+        - ironic-python-agent-check-image-dib-centos7:
+            voting: false
+        # IPA jobs that build AND validate an image via deployment (two ways).
+        - ipa-tempest-wholedisk-bios-ipmi-direct-dib-src:
+            voting: false
+        - ipa-tempest-partition-bios-ipmi-iscsi-dib-src:
+            voting: false
     check-arm64:
       jobs:
         - dib-functests-arm64-bionic
     gate:
       jobs:
         - openstack-tox-pylint
+        - opendev-buildset-registry
+        - nodepool-build-image-siblings
         - dib-nodepool-functional-openstack-centos-7-src
         - dib-nodepool-functional-openstack-centos-8-src
-        - dib-nodepool-functional-openstack-fedora-29-src
-        - dib-nodepool-functional-openstack-fedora-30-src
+        - dib-nodepool-functional-openstack-fedora-31-src
         - dib-nodepool-functional-openstack-ubuntu-xenial-src
-        - dib-nodepool-functional-openstack-ubuntu-bionic
         - dib-nodepool-functional-openstack-ubuntu-bionic-src
+        - dib-nodepool-functional-openstack-ubuntu-focal-src
         - dib-functests-xenial-python3
         - dib-functests-centos7-python2
+        - dib-functests-bionic-python3
+        - ironic-python-agent-check-image-dib-centos8
     experimental:
       jobs:
+        - opendev-buildset-registry
+        - nodepool-build-image-siblings
         - dib-nodepool-functional-openstack-gentoo-src
         - dib-nodepool-functional-openstack-debian-stretch-src
         - dib-nodepool-functional-openstack-debian-buster-src
-        # NOTE(ianw): 2019-12-10 : this can not build on bionic due to
-        # no zypper; but devstack has dropped Xenial support so can't
-        # build there either.  Because devstack install in pre, it
-        # causes multiple retries in zuul, so can't be non-voting.
-        # Paused until we figure out what to do.
-        - dib-nodepool-functional-openstack-opensuse-15-src
-        - dib-nodepool-functional-openstack-opensuse-tumbleweed-src
         - octavia-v1-dsvm-scenario
         - octavia-v1-dsvm-py3x-scenario
