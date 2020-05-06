@@ -2,8 +2,8 @@
 
 # Installation of general packages...
 apt-get -y install linux-headers-generic
-apt-get -y install python-pip git software-properties-common python-virtualenv
-python -m pip install --upgrade pip
+apt-get -y install python3-pip git software-properties-common python3-virtualenv
+python3 -m pip install --upgrade pip
 
 pip install setuptools
 add-apt-repository -y ppa:graphics-drivers/ppa
@@ -33,6 +33,18 @@ elif [ "${DIB_RELEASE}" == "bionic" ]; then
     # Get the machine-learning packages for the nvidia gpu
     NVIDIA_ML_REPO="http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/"
     NVIDIA_ML_DEB="nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb"
+
+elif [ "${DIB_RELEASE}" == "focal" ]; then
+    # Nvidia repo
+    NVIDIA_CUDA_REPO="http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/"
+    NVIDIA_CUDA_DEB="cuda-repo-ubuntu1804_10.2.89-1_amd64.deb"
+    NVIDIA_CUDA_KEY="https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub"
+    NVIDIA_DRIVER_PKG="nvidia-driver-440"
+    
+    # Get the machine-learning packages for the nvidia gpu
+    NVIDIA_ML_REPO="http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/"
+    NVIDIA_ML_DEB="nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb"
+
 else
     echo "Specified distribution release is not supported. DIB_RELEASE: ${DIB_RELEASE}"
     exit 1
@@ -73,4 +85,4 @@ libnvinfer-dev=5.1.5-1+cuda10.0
 
 # Install tensorflow-gpu 
 # --> There is a need to convert v1.X code to v2.X. See: https://www.tensorflow.org/guide/migrate
-pip install tensorflow-gpu
+pip install --upgrade tensorflow
