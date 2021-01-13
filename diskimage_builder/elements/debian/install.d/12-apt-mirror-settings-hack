@@ -1,0 +1,5 @@
+#!/bin/bash
+cat <<- "EOF1" > /etc/cloud/cloud.cfg.d/99-local-mirror-only.cfg
+apt_preserve_sources_list: true
+EOF1
+

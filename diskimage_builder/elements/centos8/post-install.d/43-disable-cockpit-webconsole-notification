@@ -1,0 +1,7 @@
+#!/bin/bash
+set -eu
+set -o pipefail
+
+# Delete the Cockpit Web Console notification on ssh login
+# Enable via: sudo systemctl enable --now cockpit.socket
+rm /etc/motd.d/cockpit

@@ -1,0 +1,12 @@
+#!/bin/bash
+if [ ${DIB_DEBUG_TRACE:-0} -gt 1 ]; then
+    set -x
+fi
+
+cat <<- "EOF1" > /etc/cloud/cloud.cfg.d/99-local-mirror-only.cfg
+apt_preserve_sources_list: true
+EOF1
+
+#echo HACK /etc/apt/sources.list with ch.archive.ubuntu.com
+#sed -i 's|//archive.ubuntu.com/|//ch.archive.ubuntu.com/|g' /etc/apt/sources.list
+#cat /etc/apt/sources.list

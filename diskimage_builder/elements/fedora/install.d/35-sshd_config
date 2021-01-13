@@ -1,0 +1,5 @@
+#!/bin/bash
+echo "UseDNS no" >> /etc/ssh/sshd_config 
+# disable password authentication
+sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/g' /etc/ssh/sshd_config
+systemctl restart sshd

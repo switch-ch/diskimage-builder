@@ -1,0 +1,146 @@
+#!/bin/bash
+echo "Update the system and install java"
+sudo add-apt-repository -y ppa:openjdk-r/ppa
+sudo apt-get update
+sudo apt-get install -y openjdk-8-jdk
+
+echo "Export java"
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+
+echo "Install the packages"
+sudo apt-get install -y r-base-core
+sudo apt-get install -y python-pip
+sudo apt-get install -y python-numpy python-scipy python-matplotlib python-pandas python-sympy python-nose python-tk
+sudo apt-get install -y acl
+
+echo "Create spark user"
+sudo useradd spark
+
+echo "Download Spark with appropriate version and unpack it"
+cd /opt/
+if curl -s --head  --request GET http://86.119.37.182/spark/spark-1.6.0-bin-hadoop2.6.tgz | grep "200 OK" > /dev/null
+    then sudo wget http://86.119.37.182/spark/spark-1.6.0-bin-hadoop2.6.tgz
+else
+    sudo wget http://d3kbcqa49mib13.cloudfront.net/spark-1.6.0-bin-hadoop2.6.tgz
+fi
+sudo tar -xvzf spark-1.6.0-bin-hadoop2.6.tgz
+
+echo "Remove the tar file after it has been unpacked"
+sudo rm spark-1.6.0-bin-hadoop2.6.tgz
+
+echo "Change the ownership of the folder and its elements"
+sudo chown -R spark:spark spark-1.6.0-bin-hadoop2.6
+
+echo "Spark path"
+export SPARK_HOME=/opt/spark-1.6.0-bin-hadoop2.6
+export PATH="$SPARK_HOME/bin:$PATH"
+
+echo "Create log, pid and spark-history directories"
+sudo mkdir /var/log/spark
+sudo chown spark:spark -R /var/log/spark
+sudo -u spark mkdir $SPARK_HOME/run
+sudo mkdir /var/log/spark/spark-history
+
+echo "Allow user spark to manipulate with the files"
+sudo setfacl -m u:spark:rwx -R /var/log/spark/spark-history
+
+echo "Create a new file in under $SPARK_HOME/conf"
+sudo touch $SPARK_HOME/conf/spark-env.sh
+
+echo "Add content to spark-env.sh"
+cat <<- EOF | sudo tee $SPARK_HOME/conf/spark-env.sh
+export SPARK_LOG_DIR=/var/log/spark
+export SPARK_PID_DIR=${SPARK_HOME}/run
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+EOF
+
+echo "Create spark-defaults.conf file in $SPARK_HOME/conf"
+sudo touch $SPARK_HOME/conf/spark-defaults.conf
+
+echo "Add content to spark-defaults.conf"
+cat <<- EOF | sudo tee $SPARK_HOME/conf/spark-defaults.conf
+spark.eventLog.dir file:///var/log/spark/spark-history
+spark.eventLog.enabled true
+spark.history.fs.logDirectory file:///var/log/spark/spark-history
+spark.history.provider org.apache.spark.deploy.history.FsHistoryProvider
+spark.history.ui.port 18080
+
+spark.yarn.containerLauncherMaxThreads 25
+spark.yarn.driver.memoryOverhead 384
+spark.yarn.executor.memoryOverhead 384
+spark.yarn.historyServer.address spark-server:18080
+spark.yarn.max.executor.failures 3
+spark.yarn.preserve.staging.files false
+spark.yarn.queue default
+spark.yarn.scheduler.heartbeat.interval-ms 5000
+spark.yarn.submit.file.replication 3
+
+spark.blockManager.port 38000
+spark.broadcast.port 38001
+spark.driver.port 38002
+spark.executor.port 38003
+spark.fileserver.port 38004
+spark.replClassServer.port 38005
+EOF
+
+echo "Install git"
+sudo apt-get -y install git
+
+echo "Install maven"
+cd /opt
+if curl -s --head  --request GET http://86.119.37.182/maven/apache-maven-3.3.9-bin.tar.gz | grep "200 OK" > /dev/null
+    then sudo wget http://86.119.37.182/maven/apache-maven-3.3.9-bin.tar.gz
+else
+    sudo wget https://www-eu.apache.org/dist/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz
+fi
+sudo tar xzvf apache-maven-3.3.9-bin.tar.gz
+
+echo "Export variables"
+export M2_HOME=/opt/apache-maven-3.3.9
+export M2=$M2_HOME/bin
+
+echo "Create zeppelin user"
+sudo useradd zeppelin
+
+echo "Download zeppelin and unpack it"
+cd /opt
+sudo git clone -b branch-0.6 https://github.com/apache/zeppelin/ zeppelin-0.6.0
+
+# Download hortonworks notebooks
+sudo rm -rf /opt/zeppelin-0.6.0/notebook
+sudo git clone https://github.com/hortonworks-gallery/zeppelin-notebooks.git /opt/zeppelin-0.6.0/notebook
+
+echo "Export zeppelin home"
+export ZEPPELIN_HOME=/opt/zeppelin-0.6.0
+
+echo "Step into zeppelin and build it"
+cd $ZEPPELIN_HOME
+sudo $M2/mvn clean package -Pspark-1.6 -Dspark.version=1.6.0 -DskipTests
+
+echo "Change ownership"
+sudo chown zeppelin:zeppelin -R /opt/zeppelin-0.6.0
+
+echo "Create log and pid directories"
+sudo mkdir /var/log/zeppelin
+sudo chown zeppelin:zeppelin /var/log/zeppelin
+sudo -u zeppelin mkdir $ZEPPELIN_HOME/run
+
+#echo "Remove the default tutorials"
+#sudo rm -rf $ZEPPELIN_HOME/notebook/*
+
+echo "Create zeppelin-env.sh"
+sudo touch $ZEPPELIN_HOME/conf/zeppelin-env.sh
+
+echo "Add lines to zeppelin-env.sh"
+cat <<- EOF | sudo tee $ZEPPELIN_HOME/conf/zeppelin-env.sh
+export SPARK_HOME=/opt/spark-1.6.0-bin-hadoop2.6
+export ZEPPELIN_LOG_DIR=/var/log/zeppelin
+export ZEPPELIN_PID_DIR=${ZEPPELIN_HOME}/run
+EOF
+
+echo "In rc.local"
+cat <<- EOF | sudo tee /etc/rc.local
+sudo -u spark /opt/spark-1.6.0-bin-hadoop2.6/sbin/start-history-server.sh
+sudo /opt/zeppelin-0.6.0/bin/zeppelin-daemon.sh start
+EOF
+

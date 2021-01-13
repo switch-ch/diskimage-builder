@@ -1,0 +1,9 @@
+centos-minimal
+openssh-server
+cloud-init
+cloud-init-datasources
+modprobe-blacklist
+manifests
+cache-url
+source-repositories
+growroot

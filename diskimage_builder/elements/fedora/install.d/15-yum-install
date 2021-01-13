@@ -1,0 +1,5 @@
+#!/bin/bash
+set -eu
+set -o pipefail
+yum -y update
+yum -y install yum-cron

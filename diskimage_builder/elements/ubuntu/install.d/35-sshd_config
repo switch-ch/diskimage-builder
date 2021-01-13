@@ -1,0 +1,4 @@
+#!/bin/bash
+echo "UseDNS no" >> /etc/ssh/sshd_config 
+#/etc/init.d/ssh restart This fixes a build error in Focal and works with Bionic
+systemctl restart sshd

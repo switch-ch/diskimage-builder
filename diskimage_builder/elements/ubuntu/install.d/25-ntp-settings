@@ -1,0 +1,18 @@
+#!/bin/bash
+sed -i 's/ubuntu.pool.ntp.org/ch.pool.ntp.org/g' /etc/ntp.conf
+/etc/init.d/ntp restart
+
+# Ubuntu Bionic doesn't use NTP anymore, but the systemd-timesyncd service
+if [[ -f /etc/systemd/timesyncd.conf ]] ;
+then
+    cp -p /etc/systemd/timesyncd.conf /etc/systemd/timesyncd.conf.back
+    cat > /etc/systemd/timesyncd.conf <<EOF
+[Time]
+NTP=ch.pool.ntp.org
+#FallbackNTP=ntp.ubuntu.com
+#RootDistanceMaxSec=5
+#PollIntervalMinSec=32
+#PollIntervalMaxSec=2048
+EOF
+
+fi
