@@ -1,6 +1,7 @@
 .coverage
 coverage.xml
 cover/*
+doc/source/developer/api/
 *~
 .testrepository
 *.sw?
@@ -9,6 +10,7 @@ cover/*
 .tox
 *.egg
 *.egg-info
+*.eggs
 dist
 *.qcow2
 *.raw

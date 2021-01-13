@@ -241,14 +241,6 @@ function cleanup_image_dir () {
     rm -rf --one-file-system $TMP_IMAGE_DIR
 }
 
-function cleanup_temp_python_exec () {
-    if [ ! -z "$DIB_ORIGINAL_PATH" ]; then
-        export PATH=$DIB_ORIGINAL_PATH
-    fi
-    rm "$DIB_PYTHON_EXEC_TMP/python" || true
-    rmdir "$DIB_PYTHON_EXEC_TMP" || true
-}
-
 # Run a directory of hooks outside the target (that is, no chrooting).
 function run_d() {
     check_element
@@ -348,7 +340,7 @@ function arg_to_elements() {
   #        element=$i
   #        path=${image_elements[$i]
   #      done
-  elinfo_out="$(element-info --env $IMAGE_ELEMENT)"
+  elinfo_out="$(${DIB_PYTHON_EXEC} ${_LIB}/element-info.py --env ${IMAGE_ELEMENT})"
   if [ $? -ne 0 ]; then
       echo "ERROR: element-info failed to expand elements."
       exit 1

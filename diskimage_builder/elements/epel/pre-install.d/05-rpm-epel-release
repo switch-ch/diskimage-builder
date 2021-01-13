@@ -35,9 +35,12 @@ fi
 
 if [ ${DIB_EPEL_DISABLED:-0} -ne 0 ]; then
     if [[ ${YUM} == "dnf" ]]; then
-        dnf config-manager --set-disabled epel
+        rpm  -q dnf-plugins-core || dnf install -y dnf-plugins-core
+        dnf config-manager --set-disabled "epel*"
     else
-        yum-config-manager --disable epel
+        # Cannot rely on package-installs, it is executed later
+        rpm  -q yum-utils || yum install -y yum-utils
+        yum-config-manager --disable "epel*"
     fi
 fi
 

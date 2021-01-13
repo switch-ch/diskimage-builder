@@ -73,7 +73,7 @@ class TestPackageInstall(base.BaseTestCase):
 
         self.assertThat(result, IsMatchingInstallList(expected))
 
-    @mock.patch.object(os, 'environ', dict(ARCH='arm64', **os.environ))
+    @mock.patch.object(os, 'environ', dict(ARCH='arm64'))
     def test_arch(self):
         '''Exercise the arch and not-arch flags'''
         objs = {
@@ -97,6 +97,54 @@ class TestPackageInstall(base.BaseTestCase):
         }
 
         self.assertThat(result, IsMatchingInstallList(expected))
+
+    kernel_objs = {
+        'linux-image-generic': [
+            {
+                'not-arch': 'arm64',
+                'when': 'DIB_UBUNTU_KERNEL = linux-image-generic',
+            },
+            {
+                'arch': 'arm64',
+                'when': (
+                    'DIB_RELEASE != xenial',
+                    'DIB_UBUNTU_KERNEL = linux-image-generic',
+                )
+            },
+        ],
+        'linux-generic-hwe-16.04': {
+            'arch': 'arm64',
+            'when': (
+                'DIB_RELEASE = xenial',
+                'DIB_UBUNTU_KERNEL = linux-image-generic',
+            )
+        },
+    }
+
+    def _test_kernel_objs_match(self, arch, release, expected):
+        with mock.patch.object(os, 'environ',
+                               dict(ARCH=arch,
+                                    DIB_UBUNTU_KERNEL='linux-image-generic',
+                                    DIB_RELEASE=release)):
+            result = installs_squash.collect_data(
+                self.final_dict, self.kernel_objs, 'test_element')
+
+        expected = {
+            'install.d': {
+                'install': [(expected, 'test_element')]
+            }
+        }
+        self.assertThat(result, IsMatchingInstallList(expected))
+
+    def test_param_list_x86(self):
+        self._test_kernel_objs_match('x86_64', 'focal', 'linux-image-generic')
+
+    def test_param_list_arm64_xenial(self):
+        self._test_kernel_objs_match('arm64', 'xenial',
+                                     'linux-generic-hwe-16.04')
+
+    def test_param_list_arm64_focal(self):
+        self._test_kernel_objs_match('arm64', 'focal', 'linux-image-generic')
 
     @mock.patch.object(os, 'environ', dict(DIB_FEATURE='1', **os.environ))
     def test_skip_when(self):
@@ -138,3 +186,38 @@ class TestPackageInstall(base.BaseTestCase):
 
         self.assertRaises(RuntimeError, installs_squash.collect_data,
                           self.final_dict, objs, 'test_element')
+
+    @mock.patch.object(os, 'environ',
+                       dict(
+                           DIB_A_FEATURE='1',
+                           DIB_B_FEATURE='1',
+                           DIB_C_FEATURE='1'))
+    def test_skip_when_list(self):
+        '''Exercise the when flag with lists'''
+        objs = {
+            'not_skipped_package': {
+                'when': [
+                    'DIB_A_FEATURE=1',
+                    'DIB_B_FEATURE=1',
+                    'DIB_C_FEATURE=1'
+                ]
+            },
+            'skipped_package': {
+                'when': [
+                    'DIB_A_FEATURE=1',
+                    'DIB_B_FEATURE=0',
+                    'DIB_C_FEATURE=1',
+                ]
+            },
+        }
+
+        result = installs_squash.collect_data(
+            self.final_dict, objs, 'test_element')
+
+        expected = {
+            'install.d': {
+                'install': [('not_skipped_package', 'test_element')]
+            }
+        }
+
+        self.assertThat(result, IsMatchingInstallList(expected))

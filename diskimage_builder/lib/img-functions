@@ -40,10 +40,9 @@ function trap_cleanup() {
 
 function cleanup () {
     unmount_image
-    dib-block-device umount
+    ${DIB_PYTHON_EXEC} ${_LIB}/dib-block-device.py umount
     cleanup_build_dir
     cleanup_image_dir
-    cleanup_temp_python_exec
 }
 
 # Helper function to run a command inside the chroot
@@ -215,8 +214,8 @@ function select_boot_kernel_initrd () {
         KERNEL=$(basename $(readlink -e $BOOTDIR/vmlinuz))
         RAMDISK=$(basename $(readlink -e $BOOTDIR/initrd))
     elif [[ -f "${TARGET_ROOT}"/etc/gentoo-release ]]; then
-        KERNEL="$(basename $(ls -1rv $BOOTDIR/kernel-*-openstack | head -n 1))"
-        RAMDISK="$(basename $(ls -1rv $BOOTDIR/initramfs-*-openstack | head -n 1))"
+        KERNEL="$(basename $(ls -1rv $BOOTDIR/vmlinuz-* | head -n 1))"
+        RAMDISK="$(basename $(ls -1rv $BOOTDIR/initramfs-* | head -n 1))"
     else
         echo "ERROR: Unable to detect operating system"
         exit 1

@@ -23,9 +23,12 @@
         - apt-sources/test-sources
         - centos-minimal/7-build-succeeds
         - centos-minimal/8-build-succeeds
-        - pip-and-virtualenv/source-install-ubuntu
+        # TODO: enable when CentOS 8 Stream repos mirrored.
+        # - centos-minimal/8-stream-build-succeeds
+        - fedora/build-succeeds
         - ubuntu-minimal/xenial-build-succeeds
         - ubuntu-minimal/bionic-build-succeeds
+        - ubuntu-minimal/focal-build-succeeds
 
 - job:
     name: dib-functests-image
@@ -40,6 +43,8 @@
       dib_functests:
         - centos7/build-succeeds
         - centos/8-build-succeeds
+        - centos/8-stream-build-succeeds
+        - fedora/build-succeeds
         - opensuse/build-succeeds
         - opensuse/opensuse15-build-succeeds
         - ubuntu/xenial-build-succeeds
@@ -80,6 +85,7 @@
     vars:
       dib_functests:
         - ubuntu-minimal/bionic-arm64-build-succeeds
+        - ubuntu-minimal/focal-arm64-build-succeeds
         - centos-minimal/8-aarch64-build-succeeds
 
 # Bionic / Python3 tests
@@ -89,10 +95,6 @@
       Run the default tests on a Bionic build host with Python 3
     parent: dib-functests-default
     nodeset: ubuntu-bionic
-    vars:
-      # These can only build on bionic
-      dib_functests_extra:
-        - fedora-minimal/build-succeeds
 
 - job:
     name: dib-functests-bionic-python3-image
@@ -100,9 +102,6 @@
       The image tests on a Bionic build host with Python 3
     parent: dib-functests-image
     nodeset: ubuntu-bionic
-    vars:
-      dib_functests_extra:
-        - fedora/build-succeeds
     voting: false
 
 - job:
@@ -120,73 +119,6 @@
     parent: dib-functests-containers
     nodeset: ubuntu-bionic
     voting: false
-
-# Xenial / Python3 tests
-- job:
-    name: dib-functests-xenial-python3
-    description: |
-      Run the default tests on a Xenial build host with Python 3
-    parent: dib-functests-default
-    nodeset: ubuntu-xenial
-    vars:
-      dib_functests_extra:
-        # Only builds on xenial; should work on focal in future
-        - pip-and-virtualenv/source-install-opensuse
-
-- job:
-    name: dib-functests-xenial-python3-image
-    description: |
-      The image tests on a Xenial build host with Python 3
-    parent: dib-functests-image
-    nodeset: ubuntu-xenial
-
-- job:
-    name: dib-functests-xenial-python3-extras
-    description: |
-      The extras tests on a Xenial build host with Python 3
-    parent: dib-functests-extras
-    nodeset: ubuntu-xenial
-    vars:
-      # opensuse-minimal can only build on xenial ATM, as other
-      # platforms don't have zypper
-      dib_functests_extra:
-        - opensuse-minimal/opensuse15-build-succeeds
-
-- job:
-    name: dib-functests-xenial-python3-containers
-    description: |
-      The containers tests on a Xenial build host with Python 3
-    parent: dib-functests-containers
-    nodeset: ubuntu-xenial
-    voting: false
-
-# Centos 7 / Python2 tests
-- job:
-    name: dib-functests-centos7-python2
-    description: |
-      Run the default tests on a Centos 7 build host with Python 2
-    parent: dib-functests-default
-    nodeset: centos-7
-    vars:
-      dib_python: python2
-
-- job:
-    name: dib-functests-centos7-python2-image
-    description: |
-      The image tests on a Centos 7 build host with Python 2
-    parent: dib-functests-image
-    nodeset: centos-7
-    vars:
-      dib_python: python2
-
-- job:
-    name: dib-functests-centos7-python2-extras
-    description: |
-      The extras tests on a Centos 7 build host with Python 2
-    parent: dib-functests-extras
-    nodeset: centos-7
-    vars:
-      dib_python: python2
 
 # ARM64 tests
 - job:
@@ -233,14 +165,17 @@
         mirror: "http://{{ zuul_site_mirror_fqdn }}/centos"
 
 - job:
-    name: dib-nodepool-functional-openstack-fedora-30-src
+    name: dib-nodepool-functional-openstack-centos-8-stream-src
     description: |
-      Test building and booting a Fedora 30 image with Nodepool and OpenStack
+      Test building and booting a Centos 8 Stream image with Nodepool and
+      OpenStack.
     parent: dib-nodepool-functional-src-base
     vars:
       nodepool_diskimage:
-        base_element: fedora-minimal
-        release: '30'
+        base_element: centos-minimal
+        release: '8-stream'
+        # TODO: set when CentOS 8 Stream repos mirrored.
+        # mirror: "http://{{ zuul_site_mirror_fqdn }}/centos"
 
 - job:
     name: dib-nodepool-functional-openstack-fedora-31-src
@@ -251,6 +186,16 @@
       nodepool_diskimage:
         base_element: fedora-minimal
         release: '31'
+
+- job:
+    name: dib-nodepool-functional-openstack-fedora-32-src
+    description: |
+      Test building and booting a Fedora 32 image with Nodepool and OpenStack
+    parent: dib-nodepool-functional-src-base
+    vars:
+      nodepool_diskimage:
+        base_element: fedora-minimal
+        release: '32'
 
 - job:
     name: dib-nodepool-functional-openstack-ubuntu-xenial-src
@@ -378,7 +323,7 @@
     vars:
       nodepool_diskimage:
         base_element: opensuse-minimal
-        release: '15.1'
+        release: '15.2'
         mirror: "http://{{ zuul_site_mirror_fqdn }}/opensuse"
 
 - job:

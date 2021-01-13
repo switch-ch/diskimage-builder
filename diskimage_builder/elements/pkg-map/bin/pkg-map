@@ -1,4 +1,4 @@
-#!/usr/local/bin/dib-python
+#!/usr/bin/env python3
 
 # Copyright 2014 Red Hat Inc.
 #
@@ -36,6 +36,12 @@ def os_family(distro):
         family = 'gentoo'
 
     return family
+
+
+def os_major_release(release):
+    if release in ['8-stream']:
+        return '8'
+    return release
 
 
 def main():
@@ -164,7 +170,8 @@ def main():
     if 'release' in package_names:
         try:
             # release is a sub-concept of distro
-            release_map = package_names['release'][args.distro][args.release]
+            release = os_major_release(args.release)
+            release_map = package_names['release'][args.distro][release]
             name_map.update(release_map)
         except KeyError:
             pass
