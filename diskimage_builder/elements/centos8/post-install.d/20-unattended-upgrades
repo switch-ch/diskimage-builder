@@ -1,8 +1,0 @@
-#!/bin/bash
-set -eu
-set -o pipefail
-
-sed -i 's/download_updates = no/download_updates = yes/g' /etc/dnf/automatic.conf
-sed -i 's/apply_updates = no/apply_updates = yes/g' /etc/dnf/automatic.conf
-sed -i 's/upgrade_type = default/upgrade_type = security/g' /etc/dnf/automatic.conf
-systemctl enable dnf-automatic.timer
