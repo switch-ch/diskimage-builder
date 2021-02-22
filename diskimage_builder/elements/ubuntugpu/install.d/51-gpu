@@ -1,88 +1,60 @@
 #!/bin/bash
 
-# Installation of general packages...
-apt-get -y install linux-headers-generic
-apt-get -y install python3-pip git software-properties-common python3-virtualenv
-python3 -m pip install --upgrade pip
+# Installation documentation can be found here:
+# Nvidia:
+#  * Tesla Drivers  - https://docs.nvidia.com/datacenter/tesla/tesla-installation-notes/index.html#ubuntu-lts
+#  * Cuda           - https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#ubuntu-installation
+#  * nvidia-docker  - https://github.com/NVIDIA/nvidia-docker/wiki/Frequently-Asked-Questions#how-do-i-install-the-nvidia-driver
+# Tensorflow:
+#  * Docker:        - https://www.tensorflow.org/install/gpu
+#                   - https://www.tensorflow.org/install/docker
+cat <<EOF > /usr/local/bin/ubuntu-install-gpu-deps.sh
+#!/bin/bash
 
-pip install setuptools
-add-apt-repository -y ppa:graphics-drivers/ppa
+if [[ $(id -u) -ne 0 ]] ; then echo "Please run script as root" ; exit 1 ; fi
 
-# This installation follows the official installation guide: https://www.tensorflow.org/install/gpu
-# Check which Version needs to be installed here.
-if [ "${DIB_RELEASE}" == "xenial" ]; then
-    # Nvidia repo
-    NVIDIA_CUDA_REPO="http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/"
-    NVIDIA_CUDA_DEB="cuda-repo-ubuntu1604_8.0.61-1_amd64.deb"
-    NVIDIA_CUDA_KEY="https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub"
-    NVIDIA_DRIVER_PKG="nvidia-driver-418"
+distribution=\$(. /etc/os-release;echo $ID$VERSION_ID )
 
-    NVIDIA_ML_REPO="http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/x86_64/"
-    NVIDIA_ML_DEB="nvidia-machine-learning-repo-ubuntu1604_1.0.0-1_amd64.deb"
+# Add required packages and CUDA repository
+echo "Install linux-headers..."
+apt-get install -y linux-headers-\$(uname -r)
+compact_distribution=\$(echo \$distribution | sed -e 's/\.//g')
+wget https://developer.download.nvidia.com/compute/cuda/repos/\$compact_distribution/x86_64/cuda-\$compact_distribution.pin
+mv cuda-\$compact_distribution.pin /etc/apt/preferences.d/cuda-repository-pin-600
+apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/\$compact_distribution/x86_64/7fa2af80.pub
+echo "deb http://developer.download.nvidia.com/compute/cuda/repos/\$compact_distribution/x86_64 /" | sudo tee /etc/apt/sources.list.d/cuda.list
 
-    # Add https support for apt-key (only necessary on Xenial)
-    apt-get install -y gnupg-curl
+# Install CUDA Drivers (includes nvidia-driver-X)
+echo "Install cuda-drivers..."
+apt-get update
+apt-get install -y --no-install-recommends cuda-drivers
 
-elif [ "${DIB_RELEASE}" == "bionic" ]; then
-    # Nvidia repo
-    NVIDIA_CUDA_REPO="http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/"
-    NVIDIA_CUDA_DEB="cuda-repo-ubuntu1804_10.1.243-1_amd64.deb"
-    NVIDIA_CUDA_KEY="https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub"
-    NVIDIA_DRIVER_PKG="nvidia-driver-418"
-    
-    # Get the machine-learning packages for the nvidia gpu
-    NVIDIA_ML_REPO="http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/"
-    NVIDIA_ML_DEB="nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb"
+cp /lib/udev/rules.d/40-vm-hotadd.rules /etc/udev/rules.d
+sed -i -e 's/SUBSYSTEM=="memory", ACTION=="add"/#SUBSYSTEM=="memory", ACTION=="add"/g' /etc/udev/rules.d/40-vm-hotadd.rules
 
-elif [ "${DIB_RELEASE}" == "focal" ]; then
-    # Nvidia repo
-    NVIDIA_CUDA_REPO="http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/"
-    NVIDIA_CUDA_DEB="cuda-repo-ubuntu1804_10.2.89-1_amd64.deb"
-    NVIDIA_CUDA_KEY="https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub"
-    NVIDIA_DRIVER_PKG="nvidia-driver-440"
-    
-    # Get the machine-learning packages for the nvidia gpu
-    NVIDIA_ML_REPO="http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/"
-    NVIDIA_ML_DEB="nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb"
+echo "Install Nvidia Toolkit"
+# Use of Docker Image is recommended: https://www.tensorflow.org/install/gpu
+# Many interdependencies can be packed into the image what's difficult for VM only installation.
+# Furthermore, it decreases the Ubuntu GPU Image size massively.
+echo "Install docker..."
+curl https://get.docker.com | sh && systemctl enable docker
 
-else
-    echo "Specified distribution release is not supported. DIB_RELEASE: ${DIB_RELEASE}"
-    exit 1
-fi
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - && curl -s -L https://nvidia.github.io/nvidia-docker/\$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
 
-if [ ! -z "$NVIDIA_CUDA_DEB" ]; then
-    wget -nv $NVIDIA_CUDA_REPO$NVIDIA_CUDA_DEB
-    dpkg -i $NVIDIA_CUDA_DEB
-    rm ./$NVIDIA_CUDA_DEB
-    apt-key adv --fetch-keys $NVIDIA_CUDA_KEY
-    apt-get -y update
-else
-    echo "Failed to install CUDA. Missing NVIDIA_CUDA_DEB..."
-    exit 1
-fi
+echo "Install nvidia-docker2 ..."
+apt-get update
+apt-get install -y nvidia-docker2
 
+# Test GPU Acess via:
+echo "docker run --gpus all -it --rm tensorflow/tensorflow:latest-gpu python -c \"import tensorflow as tf; print('Num GPUs Available: ', len(tf.config.list_physical_devices('GPU')))\" "
+echo "docker run --gpus all -it --rm tensorflow/tensorflow:latest-gpu python -c \"import tensorflow as tf; print(tf.reduce_sum(tf.random.normal([1000, 1000])))\" "
 
-# Install development and runtime
-# Install CUDA and cudnn, cuda
-wget -nv $NVIDIA_ML_REPO$NVIDIA_ML_DEB
-dpkg -i ./$NVIDIA_ML_DEB
-rm ./$NVIDIA_ML_DEB
-apt-get -y update
-# Install NVIDIA driver
-if [ ! -z "$NVIDIA_DRIVER_PKG" ]; then
-    # Install nvidia driver if necessary
-    apt-get install -y --no-install-recommends $NVIDIA_DRIVER_PKG
-fi
+echo "Reboot in 15 seconds ..."
+sleep 15
+echo "Reboot!"
+reboot now
 
-apt-get install -y --no-install-recommends \
-cuda-10-0 \
-libcudnn7=7.6.2.24-1+cuda10.0  \
-libcudnn7-dev=7.6.2.24-1+cuda10.0
+EOF
 
-# Install TensorRT. Requires that libcudnn7 is installed above.
-apt-get install -y --no-install-recommends libnvinfer5=5.1.5-1+cuda10.0 \
-libnvinfer-dev=5.1.5-1+cuda10.0
-
-# Install tensorflow-gpu 
-# --> There is a need to convert v1.X code to v2.X. See: https://www.tensorflow.org/guide/migrate
-pip install --upgrade tensorflow
+chmod 0755 /usr/local/bin/ubuntu-install-gpu-deps.sh
+chown root:root /usr/local/bin/ubuntu-install-gpu-deps.sh
