@@ -1,4 +1,0 @@
-#!/bin/bash
-export DIB_RELEASE=xenial
-export DIB_DISTRIBUTION_MIRROR=http://ch.archive.ubuntu.com/ubuntu
-export DIB_CLOUD_INIT_ETC_HOSTS=localhost

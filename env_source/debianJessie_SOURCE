@@ -1,5 +1,0 @@
-#!/bin/bash
-export DIB_DISTRIBUTION_MIRROR=http://ftp.ch.debian.org/debian/
-export DIB_RELEASE=jessie
-export DIB_CLOUD_INIT_ETC_HOSTS=localhost
-#echo "WARNING! Please look at https://bugs.launchpad.net/tripleo/+bug/1388755 and make the necessary changes, so that the instances hostname is correctly set!"
