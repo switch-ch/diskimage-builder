@@ -1,4 +1,5 @@
 #!/bin/bash
-unset DIB_RELEASE
+export DIB_RELEASE=7
+export DIB_CLOUD_INIT_DATASOURCES="Ec2, ConfigDrive"
 unset DIB_DISTRIBUTION_MIRROR
 export DIB_CLOUD_INIT_ETC_HOSTS=localhost

@@ -1,4 +1,0 @@
-#!/bin/bash
-# echo "UseDNS no" >> /etc/ssh/sshd_config 
-sed -i -e 's/#UseDNS no/UseDNS no/g' /etc/ssh/sshd_config
-service sshd restart
