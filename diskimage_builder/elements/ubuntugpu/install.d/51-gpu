@@ -18,6 +18,10 @@ distribution=\$(. /etc/os-release;echo \$ID\$VERSION_ID )
 # Add required packages and CUDA repository
 echo "Install linux-headers..."
 apt-get install -y linux-headers-\$(uname -r)
+if [ \$? != 0 ]; then
+  echo "Failed to install linux-headers..."
+  exit 1
+fi
 compact_distribution=\$(echo \$distribution | sed -e 's/\.//g')
 wget https://developer.download.nvidia.com/compute/cuda/repos/\$compact_distribution/x86_64/cuda-\$compact_distribution.pin
 mv cuda-\$compact_distribution.pin /etc/apt/preferences.d/cuda-repository-pin-600
@@ -26,8 +30,13 @@ echo "deb http://developer.download.nvidia.com/compute/cuda/repos/\$compact_dist
 
 # Install CUDA Drivers (includes nvidia-driver-X)
 echo "Install cuda-drivers..."
+sleep 5
 apt-get update
-apt-get install -y --no-install-recommends cuda-drivers
+apt-get install -y cuda-drivers
+if [ \$? != 0 ]; then
+  echo "Failed to install cuda-drivers..."
+  exit 1
+fi
 
 cp /lib/udev/rules.d/40-vm-hotadd.rules /etc/udev/rules.d
 sed -i -e 's/SUBSYSTEM=="memory", ACTION=="add"/#SUBSYSTEM=="memory", ACTION=="add"/g' /etc/udev/rules.d/40-vm-hotadd.rules
@@ -38,12 +47,20 @@ echo "Install Nvidia Toolkit"
 # Furthermore, it decreases the Ubuntu GPU Image size massively.
 echo "Install docker..."
 curl https://get.docker.com | sh && systemctl enable docker
+if [ \$? != 0 ]; then
+  echo "Failed to install docker..."
+  exit 1
+fi
 
 curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - && curl -s -L https://nvidia.github.io/nvidia-docker/\$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
 
 echo "Install nvidia-docker2 ..."
 apt-get update
 apt-get install -y nvidia-docker2
+if [ \$? != 0 ]; then
+  echo "Failed to install nvidia-docker2..."
+  exit 1
+fi
 
 # Test GPU Acess via:
 echo "docker run --gpus all -it --rm tensorflow/tensorflow:latest-gpu python -c \"import tensorflow as tf; print('Num GPUs Available: ', len(tf.config.list_physical_devices('GPU')))\" "
