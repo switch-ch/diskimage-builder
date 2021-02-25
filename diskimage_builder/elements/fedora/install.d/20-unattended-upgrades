@@ -1,7 +1,10 @@
 #!/bin/bash
 set -eu
 set -o pipefail
-#su -c '/sbin/chkconfig --level 345 yum on; /sbin/service yum start'
-sed -i 's/update_cmd = default/update_cmd = security/g' /etc/yum/yum-cron.conf
-sed -i 's/apply_updates = no/apply_updates = yes/g' /etc/yum/yum-cron.conf
-systemctl restart yum-cron.service
+
+dnf install -y dnf-automatic
+
+sed -i 's/download_updates = no/download_updates = yes/g' /etc/dnf/automatic.conf
+sed -i 's/apply_updates = no/apply_updates = yes/g' /etc/dnf/automatic.conf
+sed -i 's/upgrade_type = default/upgrade_type = security/g' /etc/dnf/automatic.conf
+systemctl enable dnf-automatic.timer
