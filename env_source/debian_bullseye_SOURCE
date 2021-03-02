@@ -1,0 +1,6 @@
+#!/bin/bash
+export DIB_DISTRIBUTION_MIRROR=http://ftp.ch.debian.org/debian/
+export DIB_RELEASE=bullseye
+export DIB_CLOUD_INIT_ETC_HOSTS=localhost
+# SWITCHengines: Turn off interface creation.
+export DIB_APT_MINIMAL_CREATE_INTERFACES=0
